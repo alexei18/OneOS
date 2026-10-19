@@ -107,6 +107,7 @@ class BaseUIAAdapter:
         self.target: WindowTarget | None = None
         self._window: xa11y.Element | None = None
         self._sid = ""
+        self.opaque_classes: set[str] = set()  # set by a composer: content of these comes from elsewhere
 
     # -- protocol ---------------------------------------------------------------------------
 
@@ -311,7 +312,8 @@ class BaseUIAAdapter:
         ctid = raw.get("control_type_id")
         role = uia_role(ctid, props["role"] or "", bool(props["modal"]))
         children_els = el.children()
-        children = [self._node(c, f"{loc}/{i}", depth - 1) for i, c in enumerate(children_els)] if depth > 0 else []
+        walk = depth > 0 and raw.get("class_name") not in self.opaque_classes
+        children = [self._node(c, f"{loc}/{i}", depth - 1) for i, c in enumerate(children_els)] if walk else []
         b = props["bounds"]
         return Node(
             role=role,
@@ -336,7 +338,7 @@ class BaseUIAAdapter:
 
     def _raw(self, el: xa11y.Element, loc: str, depth: int) -> dict:
         out: dict[str, Any] = {"locator": loc, **read_props(el)}
-        if depth > 0:
+        if depth > 0 and out["raw"].get("class_name") not in self.opaque_classes:
             out["children"] = [self._raw(c, f"{loc}/{i}", depth - 1) for i, c in enumerate(el.children())]
         return out
 

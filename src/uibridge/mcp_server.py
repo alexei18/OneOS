@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import threading
 from collections.abc import Callable
 from typing import Annotated
@@ -66,7 +67,7 @@ class Bridge:
     def __init__(self, debug: bool, dry_run: bool) -> None:
         traces = backends.traces_dir()
         self.router = Router(Tracer(traces, "mcp"), backends.factories(), traces / "_refs",
-                             enrichers=backends.enrichers())
+                             **backends.router_kwargs())
         self.debug = debug
         self.dry_run = dry_run
         self.lock = threading.Lock()
@@ -101,7 +102,16 @@ class Bridge:
 def build_server(debug: bool = False, dry_run: bool = False) -> MCPServer:
     bridge = Bridge(debug, dry_run)
     router = bridge.router
-    mcp = MCPServer("uibridge", instructions=INSTRUCTIONS + (f"\n{DRY_RUN_NOTE}" if dry_run else ""))
+    @contextlib.asynccontextmanager
+    async def lifespan(_server):
+        try:
+            yield {}
+        finally:  # session end: disconnect CDP and close apps launched with a debugging port (rule 6)
+            with bridge.lock:
+                router.close()
+
+    mcp = MCPServer("uibridge", instructions=INSTRUCTIONS + (f"\n{DRY_RUN_NOTE}" if dry_run else ""),
+                    lifespan=lifespan)
     tool = mcp.tool
 
     @tool(structured_output=False, description="List open top-level windows: app_id, process, detected "
@@ -111,20 +121,22 @@ def build_server(debug: bool = False, dry_run: bool = False) -> MCPServer:
             lines = []
             for w in backends.windows():
                 d = router.detect(w)
-                adapter = d.chosen if d.chosen == d.preferred else f"{d.chosen} (prefers {d.preferred})"
+                adapter = backends.adapter_label(router, w, d)
                 lines.append(f"{w.app_id}  {w.process_name}  {d.framework}  {adapter}  {w.title!r}")
             return "\n".join(lines) or "no windows"
         return bridge.call("list_apps", {}, run)
 
     @tool(structured_output=False, description="Start a program (name on PATH or full path) and attach to the "
-          "window it opens. Returns the app_id and a depth-2 snapshot. run_as_invoker=true starts it without "
-          "elevation (for programs like regedit that would otherwise ask for administrator rights).")
+          "window it opens. Returns the app_id and a depth-2 snapshot. with_cdp=true opens a debugging port on "
+          "127.0.0.1 for Electron/WebView2 apps so their full web content becomes visible and actionable (the app is "
+          "closed when this session ends; for an app that is already running, pass args to start a separate instance, "
+          "e.g. VS Code ['--user-data-dir', '<new folder>']). run_as_invoker=true starts it without elevation (for "
+          "programs like regedit that would otherwise ask for administrator rights).")
     def launch(path_or_name: str, args: list[str] | None = None, with_cdp: bool = False,
                run_as_invoker: bool = False) -> str:
         def run() -> str:
-            if with_cdp:
-                raise ValueError("with_cdp is not available yet (CDP adapter arrives in Phase 6); launch without it")
-            attached = router.launch(path_or_name, args or [], backends.windows, run_as_invoker=run_as_invoker)
+            attached = router.launch(path_or_name, args or [], backends.windows, run_as_invoker=run_as_invoker,
+                                     with_cdp=with_cdp)
             app_id = attached.target.app_id
             return f"app_id: {app_id}\n" + router.snapshot(app_id, depth=2).view.text
         return bridge.call("launch", {"path_or_name": path_or_name, "args": args, "with_cdp": with_cdp,

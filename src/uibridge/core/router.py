@@ -17,7 +17,17 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from uibridge.core.adapter import FULL_DEPTH, Adapter, Declined, Enricher, WindowTarget
+from uibridge.core.adapter import (
+    FULL_DEPTH,
+    Adapter,
+    ContentProvider,
+    ContentUnavailable,
+    Declined,
+    Enricher,
+    Launcher,
+    WindowTarget,
+)
+from uibridge.core.compose import ComposedAdapter
 from uibridge.core.detector import FALLBACK, Detection, detect
 from uibridge.core.model import Action, ActionResult, Node, Ref
 from uibridge.core.refs import AssignStats, RefRegistry
@@ -33,6 +43,7 @@ class Attached:
     detection: Detection
     adapter: Adapter
     enricher: Enricher | None = None  # e.g. win32 facts + native messages on top of the base_uia tree
+    notice: str | None = None  # shown in the snapshot header, e.g. "started without CDP"
 
 
 @dataclass
@@ -45,10 +56,15 @@ class SnapshotResult:
 class Router:
     def __init__(self, tracer: Tracer, adapters: dict[str, Callable[[WindowTarget], Adapter]], state_dir: Path | str,
                  settle_s: float = SETTLE_S,
-                 enrichers: dict[str, Callable[[WindowTarget], Enricher]] | None = None) -> None:
+                 enrichers: dict[str, Callable[[WindowTarget], Enricher]] | None = None,
+                 contents: dict[str, Callable[[WindowTarget], ContentProvider]] | None = None,
+                 launcher: Launcher | None = None) -> None:
         self.tracer = tracer
         self.adapters = adapters
         self.enrichers = enrichers or {}
+        self.contents = contents or {}
+        self.launcher = launcher
+        self.launched_with_cdp: list[int] = []  # pids this session started with a debugging port
         self.state_dir = Path(state_dir)
         self.settle_s = settle_s
         self.registry = RefRegistry(tracer)
@@ -56,30 +72,53 @@ class Router:
         self.last_diff: AssignStats | None = None
 
     def detect(self, target: WindowTarget) -> Detection:
-        detection = detect(target, set(self.adapters) | set(self.enrichers))
+        detection = self._detect(target)
+        self._emit_detect(target, detection)
+        return detection
+
+    def _detect(self, target: WindowTarget) -> Detection:
+        detection = detect(target, set(self.adapters) | set(self.enrichers) | set(self.contents))
         if detection.chosen in self.enrichers:
             detection.why += f" (base_uia tree + {detection.chosen} enrichment)"
+        if detection.chosen in self.contents:
+            detection.why += f" (base_uia frame + {detection.chosen} content)"
+        return detection
+
+    def _emit_detect(self, target: WindowTarget, detection: Detection) -> None:
         self.tracer.emit(
             "detect",
             {"target": target.model_dump(), **detection.model_dump()},
             app_id=target.app_id,
         )
-        return detection
 
     def attach(self, target: WindowTarget) -> Attached:
-        detection = self.detect(target)
-        composed = detection.chosen in self.enrichers
-        adapter = self.adapters[FALLBACK if composed else detection.chosen](target)
-        enricher = self.enrichers[detection.chosen](target) if composed else None
+        detection = self._detect(target)
+        layered = detection.chosen in self.enrichers or detection.chosen in self.contents
+        base = self.adapters[FALLBACK if layered else detection.chosen](target)
+        enricher = self.enrichers[detection.chosen](target) if detection.chosen in self.enrichers else None
+        adapter: Adapter = base
+        notice = None
         try:
-            adapter.attach(target)
+            if detection.chosen in self.contents:
+                composed = ComposedAdapter(base, self.contents[detection.chosen](target))
+                try:
+                    composed.attach(target)
+                    adapter = composed
+                except ContentUnavailable as e:
+                    notice = str(e)
+                    detection.why += f"; {detection.chosen} unavailable, using {FALLBACK} only: {e}"
+                    detection.chosen = FALLBACK  # the base adapter is already attached
+            else:
+                base.attach(target)
             if enricher:
                 enricher.attach(target)
         except Exception as e:
+            self._emit_detect(target, detection)
             self.tracer.error(e, {"op": "attach", "adapter": detection.chosen}, app_id=target.app_id)
             raise
+        self._emit_detect(target, detection)
         self.registry.load(self._state_path(target.app_id), target.app_id, target.pid)
-        attached = Attached(target, detection, adapter, enricher)
+        attached = Attached(target, detection, adapter, enricher, notice)
         self.apps[target.app_id] = attached
         return attached
 
@@ -97,6 +136,8 @@ class Router:
             header = None
             if ref is None:
                 header = app_header(app.target.title, app.detection.framework, app.target.pid)
+                if app.notice:
+                    header += f" ({app.notice})"
                 if (raw.get("window_state") or {}).get("minimized"):
                     header += " minimized"
                     if tree.child_count == 0:
@@ -153,22 +194,39 @@ class Router:
         return render(node, self.tracer, app_id=app_id, depth=depth)
 
     def launch(self, path_or_name: str, args: list[str], windows: Callable[[], list[WindowTarget]],
-               timeout_s: float = 15.0, run_as_invoker: bool = False) -> Attached:
+               timeout_s: float = 15.0, run_as_invoker: bool = False, with_cdp: bool = False) -> Attached:
         """Start a program and attach to the window it opens. UWP launchers (calc.exe) hand off to
-        another process, so a single new window from any process is accepted."""
+        another process, so a single new window from any process is accepted. with_cdp opens a
+        debugging port on 127.0.0.1 (via the launcher) and the CDP content provider attaches to it."""
         exe = shutil.which(path_or_name) or path_or_name
         before = {w.app_id for w in windows()}
         cmd = [exe, *args]
         env = {**os.environ, "__COMPAT_LAYER": "RunAsInvoker"} if run_as_invoker else None
-        self.tracer.emit("action_request", {"launch": path_or_name, "args": args, "run_as_invoker": run_as_invoker})
+        env_note = ", env __COMPAT_LAYER=RunAsInvoker" if run_as_invoker else ""
+        plan = None
+        self.tracer.emit("action_request", {"launch": path_or_name, "args": args, "run_as_invoker": run_as_invoker,
+                                            "with_cdp": with_cdp})
+        if with_cdp:
+            if self.launcher is None:
+                raise RuntimeError("with_cdp needs the CDP launcher, which is not configured")
+            plan = self.launcher.prepare(exe, args, env)
+            cmd, env, env_note = plan.cmd, plan.env, env_note + plan.note
         try:
             proc = subprocess.Popen(cmd, env=env)
         except OSError as e:
             self.tracer.error(e, {"op": "launch", "cmd": cmd})
             raise FileNotFoundError(f"cannot start {path_or_name!r}: {e}; pass a full path") from e
-        env_note = ", env __COMPAT_LAYER=RunAsInvoker" if run_as_invoker else ""
         self.tracer.emit("action_native", {"strategy": "process", "native_call": f"subprocess.Popen({cmd!r}{env_note})",
                                            "pid": proc.pid})
+        if plan is not None:
+            try:
+                endpoint = self.launcher.wait(plan, proc)
+            except Exception as e:
+                self.tracer.error(e, {"op": "launch", "cmd": cmd, "with_cdp": True})
+                raise
+            self.launched_with_cdp.append(proc.pid)
+            self.tracer.emit("action_result", {"ok": True, "strategy": "process", "native_call": f"CDP endpoint {endpoint}",
+                                               "error": None, "duration_ms": 0})
         deadline = time.monotonic() + timeout_s
         new: list[WindowTarget] = []
         while time.monotonic() < deadline:
@@ -184,6 +242,24 @@ class Router:
         )
         self.tracer.error(error, {"op": "launch", "cmd": cmd})
         raise error
+
+    def close(self) -> None:
+        """End of session: detach every adapter and close the apps this session launched with a
+        debugging port, so no CDP endpoint outlives the session (CLAUDE.md rule 6)."""
+        for app_id, app in list(self.apps.items()):
+            try:
+                app.adapter.detach()
+            except Exception as e:
+                self.tracer.error(e, {"op": "close", "detach": app.adapter.name}, app_id=app_id)
+        self.apps.clear()
+        for pid in self.launched_with_cdp:
+            try:
+                call = self.launcher.close_app(pid)
+                self.tracer.emit("action_native", {"strategy": "process", "native_call": call, "pid": pid,
+                                                   "reason": "session end: close app launched with CDP"})
+            except Exception as e:
+                self.tracer.error(e, {"op": "close", "pid": pid})
+        self.launched_with_cdp.clear()
 
     def read(self, app_id: str, ref: str) -> Node:
         app = self.apps[app_id]

@@ -18,7 +18,7 @@ from uibridge.core.tracer import Tracer
 
 def _router(app: str) -> Router:
     traces = backends.traces_dir()
-    return Router(Tracer(traces, app), backends.factories(), traces / "_refs", enrichers=backends.enrichers())
+    return Router(Tracer(traces, app), backends.factories(), traces / "_refs", **backends.router_kwargs())
 
 
 def _pick(pattern: str) -> WindowTarget | None:
@@ -39,7 +39,7 @@ def cmd_apps(_: argparse.Namespace) -> int:
     rows = [(w, router.detect(w)) for w in backends.windows()]
     print(f"{'app_id':<10} {'pid':>6}  {'process':<24} {'framework':<10} {'adapter':<22} title")
     for w, d in rows:
-        adapter = d.chosen if d.preferred == d.chosen else f"{d.preferred}->{d.chosen}"
+        adapter = backends.adapter_label(router, w, d)
         print(f"{w.app_id:<10} {w.pid:>6}  {w.process_name:<24} {d.framework:<10} {adapter:<22} {w.title}")
     print(f"\ntrace: {router.tracer.session_dir}")
     return 0
@@ -50,8 +50,11 @@ def cmd_inspect(args: argparse.Namespace) -> int:
     if target is None:
         return 2
     router = _router(target.process_name)
-    attached = router.attach(target)
-    result = router.snapshot(target.app_id, depth=args.depth, include_offscreen=args.offscreen)
+    try:
+        attached = router.attach(target)
+        result = router.snapshot(target.app_id, depth=args.depth, include_offscreen=args.offscreen)
+    finally:
+        router.close()
     out = router.tracer.session_dir
     (out / "raw.json").write_text(json.dumps(result.raw, ensure_ascii=False, indent=1, default=str),
                                   encoding="utf-8")
@@ -77,13 +80,15 @@ def cmd_act(args: argparse.Namespace) -> int:
     if target is None:
         return 2
     router = _router(target.process_name)
-    router.attach(target)
     try:
+        router.attach(target)
         result = router.act(target.app_id, args.ref, action, dry_run=args.dry_run)
     except RefResolutionError as e:
         print(f"FAILED: {e}")
         print(f"trace: {router.tracer.session_dir}")
         return 1
+    finally:
+        router.close()
     print(f"{'ok' if result.ok else 'FAILED'}  strategy={result.strategy}  {result.duration_ms:.0f} ms")
     print(f"native: {result.native_call}")
     if result.error:

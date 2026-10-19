@@ -225,8 +225,18 @@ async function renderSnapshot(sid, ev) {
     rawPane.append(el("div", { class: "node", dataset: { loc } }, "  ".repeat(depth), bits.filter(Boolean).join(" ")));
     (n.children || []).forEach((c, i) => walkRaw(c, childLoc(loc, i), depth + 1));
   };
-  if (g.raw) walkRaw(g.raw.tree, g.raw.locator || g.raw.window || "/", 0);
-  else rawPane.append(el("div", { class: "muted" }, "no raw dump for this snapshot (act pre/post snapshots and wait_for polls only record the normalized tree)"));
+  if (g.raw?.tree) walkRaw(g.raw.tree, g.raw.locator || g.raw.window || "/", 0);
+  if (g.raw?.cdp?.yaml) {  // web content as read over CDP: the aria snapshot text, linked by cdp:<ref> locators
+    rawPane.append(el("div", { class: "muted", style: "margin-top:8px" }, `cdp aria snapshot · ${g.raw.cdp.url || ""}`));
+    rawByLoc.set("cdp:page", { cdp: "page", url: g.raw.cdp.url, title: g.raw.cdp.title });
+    for (const lineText of g.raw.cdp.yaml.split("\n")) {
+      const m = lineText.match(/\[ref=(\w+)\]/);
+      const loc = m ? `cdp:${m[1]}` : undefined;
+      if (loc) rawByLoc.set(loc, { aria: lineText.trim() });
+      rawPane.append(el("div", { class: "node", dataset: loc ? { loc } : {} }, lineText));
+    }
+  }
+  if (!g.raw) rawPane.append(el("div", { class: "muted" }, "no raw dump for this snapshot (act pre/post snapshots and wait_for polls only record the normalized tree)"));
 
   const aiPane = el("div", { class: "body" });
   if (g.ai_view) {
@@ -277,7 +287,7 @@ async function renderSnapshot(sid, ev) {
     el("div", { class: "stats" },
       stat("tokens", g.ai_view?.tokens), stat("nodes in → out", s.nodes_in != null ? `${s.nodes_in} → ${s.nodes_out}` : null),
       stat("hoisted", s.hoisted), stat("hidden", s.hidden), stat("truncated", s.truncated), stat("collapsed", s.collapsed),
-      stat("glyphs", s.glyphs), stat("text cut", s.text_truncated),
+      stat("glyphs", s.glyphs), stat("empty", s.empty), stat("text cut", s.text_truncated),
       stat("raw nodes", g.raw ? rawByLoc.size : null), stat("normalized nodes", countNodes(g.normalized) || null),
       stat("AI view lines", g.ai_view ? aiText.split("\n").length : null),
       stat("refs new/reused/gone", g.counts ? `${g.counts.new}/${g.counts.reused}/${g.counts.gone}` : null)),

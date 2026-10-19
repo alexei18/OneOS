@@ -54,6 +54,20 @@ def test_renamed_node_without_automation_id_gets_new_ref(registry):
     assert after["Item 001"] == before["Item 001"] and after["Item 003"] == before["Item 003"]
 
 
+def test_renamed_container_keeps_its_ref_and_its_subtree(registry):
+    """VS Code: the RootView pane and the page document carry the window title; a new title must not
+    re-ref everything below them."""
+    adapter = FakeAdapter.load("tree_app")
+    before = refs_by_name(snap(adapter, registry))
+    splitter = adapter.fixture["root"]["children"][1]
+    splitter["name"] = "Welcome - Registry"  # container without automation id, named like a title
+    tree = snap(adapter, registry)
+    after = refs_by_name(tree)
+    renamed = next(n for n in tree.walk() if n.name == "Welcome - Registry")
+    assert renamed.ref == next(n.ref for n in tree.walk() if n.meta.class_name == "RegEdit_Splitter")
+    assert after["Computer"] == before["Computer"] and after["Values"] == before["Values"]
+
+
 def test_changed_states_and_values_are_reported(registry):
     adapter = FakeAdapter.load("win32_dialog")
     tree = snap(adapter, registry)

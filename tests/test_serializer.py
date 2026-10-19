@@ -133,6 +133,25 @@ def test_icon_glyph_text_is_dropped(tracer):
     assert v.stats.glyphs == 2
 
 
+def test_empty_unnamed_containers_are_pruned_and_do_not_block_hoisting(tracer):
+    # Chromium frame: View > [WebView document > NativeViewHost pane (empty)] + [render pane > page]
+    page = Node(ref="e9", role=Role.DOCUMENT, name="Welcome", children=[Node(ref="e10", role=Role.BUTTON, name="Run")])
+    empty_doc = Node(ref="e3", role=Role.DOCUMENT, children=[Node(ref="e4", role=Role.PANE)])
+    view = Node(ref="e2", role=Role.PANE, children=[empty_doc, Node(ref="e5", role=Role.PANE, children=[page])])
+    v = render(Node(ref="e1", role=Role.WINDOW, name="Code", children=[Node(ref="e8", role=Role.PANE), view]),
+               tracer, app_id="a", depth=3)
+    assert v.text.splitlines() == ['- window "Code" [e1]', '  - document "Welcome" [e9]', '    - button "Run" [e10]']
+    assert v.stats.empty == 3 and v.stats.hoisted == 2
+
+
+def test_depth_cut_does_not_announce_hidden_only_children(tracer):
+    item = Node(ref="e2", role=Role.MENUITEM, name="File",
+                children=[Node(ref="e3", role=Role.GENERIC, name="File", states={State.ENABLED, State.OFFSCREEN})])
+    text = render(Node(role=Role.MENUBAR, children=[item, Node(ref="e4", role=Role.MENUITEM, name="Edit")]), tracer,
+                  app_id="a", depth=2).text
+    assert "more" not in text
+
+
 def test_child_count_beyond_loaded_children_is_announced(tracer):
     node = Node(ref="e9", role=Role.LIST, name="Lazy", child_count=40)
     assert "  … 40 more (expand e9)" in view(Node(role=Role.WINDOW, children=[node]), tracer).text

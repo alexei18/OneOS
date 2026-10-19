@@ -14,6 +14,8 @@ ONE_LINE_CONTAINERS = {Role.MENUBAR, Role.TOOLBAR}
 SIMPLE_ITEMS = {Role.MENUITEM, Role.BUTTON}
 ROW_COUNTED = {Role.TABLE, Role.GRID}
 DEFAULT_STATES = {State.ENABLED}
+EMPTYABLE = {Role.GENERIC, Role.PANE, Role.GROUP, Role.DOCUMENT}
+PASSIVE_ACTIONS = {ActionKind.FOCUS, ActionKind.SCROLL_INTO_VIEW}
 
 
 class PruneStats(BaseModel):
@@ -25,6 +27,7 @@ class PruneStats(BaseModel):
     collapsed: int = 0  # children folded into their parent's line
     text_truncated: int = 0  # names/values cut at max_text
     glyphs: int = 0  # icon-font glyph texts dropped
+    empty: int = 0  # unnamed containers with nothing to show (incl. their empty subtrees)
 
 
 class AIView(BaseModel):
@@ -79,23 +82,38 @@ def render(
             text = text[:max_text].rstrip() + "…"
         return _quote(text)
 
-    def hoist(node: Node) -> Node:
-        while not node.name and node.role in HOISTABLE and len(node.children) == 1 and node.child_count == 1:
-            stats.hoisted += 1
-            node = node.children[0]
-        return node
-
-    def hidden(node: Node) -> bool:
-        if include_offscreen or State.OFFSCREEN not in node.states:
-            return False
-        stats.hidden += sum(1 for _ in node.walk())
-        return True
-
-    def glyph_leaf(node: Node) -> bool:
+    def skip_reason(node: Node) -> str | None:
+        """Why a node gets no line: offscreen, an icon glyph, or an empty unnamed container."""
+        if not include_offscreen and State.OFFSCREEN in node.states:
+            return "hidden"
         if node.role == Role.TEXT and node.child_count == 0 and is_glyph(node.name):
-            stats.glyphs += 1
-            return True
-        return False
+            return "glyphs"
+        if (node.role in EMPTYABLE and not node.name and not node.value
+                and not set(node.actions) - PASSIVE_ACTIONS and node.child_count == len(node.children)
+                and all(skip_reason(c) for c in node.children)):
+            return "empty"  # e.g. Chromium's empty WebView/NativeViewHost panes around web content
+        return None
+
+    def shown_children(node: Node, count: bool) -> list[Node]:
+        shown = []
+        for child in node.children:
+            reason = skip_reason(child)
+            if reason is None:
+                shown.append(child)
+            elif count:
+                size = 1 if reason == "glyphs" else sum(1 for _ in child.walk())
+                setattr(stats, reason, getattr(stats, reason) + size)
+        return shown
+
+    def hoist(node: Node) -> Node:
+        while not node.name and node.role in HOISTABLE and node.child_count == len(node.children):
+            shown = shown_children(node, count=False)
+            if len(shown) != 1:
+                break
+            shown_children(node, count=True)  # account for the skipped siblings
+            stats.hoisted += 1
+            node = shown[0]
+        return node
 
     def is_simple_item(n: Node) -> bool:
         return n.role in SIMPLE_ITEMS and bool(n.name) and n.child_count == 0 and n.states <= DEFAULT_STATES
@@ -147,10 +165,12 @@ def render(
             return
         pad = "  " * (level + 1)
         if level + 1 >= depth:
-            stats.truncated += node.child_count
-            lines.append(f"{pad}… {node.child_count} more (expand {node.ref})")
+            more = len(shown_children(node, count=False)) + node.child_count - len(node.children)
+            if more:  # children that would all be skipped are not announced
+                stats.truncated += more
+                lines.append(f"{pad}… {more} more (expand {node.ref})")
             return
-        visible = [k for k in node.children if not hidden(k) and not glyph_leaf(k)]
+        visible = shown_children(node, count=True)
         for child in visible[:max_items]:
             emit(hoist(child), level + 1)
         if len(visible) > max_items:

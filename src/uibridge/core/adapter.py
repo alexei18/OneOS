@@ -70,3 +70,47 @@ class Enricher(Protocol):
     def raw_dump(self) -> dict: ...
 
     def act(self, tree: Node, ref: str, action: Action, dry_run: bool = False) -> ActionResult | Declined: ...
+
+
+class ContentUnavailable(Exception):
+    """A content provider cannot attach (e.g. an Electron app started without a debugging port)."""
+
+
+class ContentProvider(Protocol):
+    """Supplies the inner content of a window (e.g. CDP for Electron/WebView2) while a base adapter
+    supplies the native frame. Its nodes' locators are recognised by owns()."""
+
+    name: str
+    host_classes: set[str]  # base nodes (by class) whose subtree this content replaces
+
+    def owns(self, locator: str | None) -> bool: ...
+
+    def attach(self, target: WindowTarget) -> None: ...  # raises ContentUnavailable
+
+    def snapshot(self, root: Ref | None, depth: int) -> Node: ...
+
+    def read(self, ref: Ref) -> Node: ...  # raises LocatorNotFound
+
+    def act(self, ref: Ref, action: Action, dry_run: bool = False) -> ActionResult: ...
+
+    def raw_dump(self) -> dict: ...
+
+    def detach(self) -> None: ...
+
+
+@dataclass
+class LaunchPlan:
+    cmd: list[str]
+    env: dict[str, str] | None
+    port: int
+    note: str  # human-readable addition to the traced command line
+
+
+class Launcher(Protocol):
+    """Starts apps with a debugging endpoint and closes them again (implemented in adapters/cdp.py)."""
+
+    def prepare(self, exe: str, args: list[str], env: dict[str, str] | None) -> LaunchPlan: ...
+
+    def wait(self, plan: LaunchPlan, proc: object) -> str: ...  # endpoint URL; raises with an actionable message
+
+    def close_app(self, pid: int) -> str: ...  # description of what was done

@@ -11,7 +11,7 @@ from collections.abc import Callable
 from functools import cache
 from pathlib import Path
 
-from uibridge.core.adapter import Adapter, Enricher, WindowTarget
+from uibridge.core.adapter import Adapter, ContentProvider, Enricher, Launcher, WindowTarget
 
 FAKE_FIXTURES = ["win32_dialog", "tree_app", "long_list"]
 
@@ -55,3 +55,43 @@ def enrichers() -> dict[str, Callable[[WindowTarget], Enricher]]:
     from uibridge.adapters.win32 import Win32Enricher
 
     return {"win32": lambda target: Win32Enricher()}
+
+
+def contents() -> dict[str, Callable[[WindowTarget], ContentProvider]]:
+    """Content providers composed inside a base_uia frame (CDP for Electron / WebView2)."""
+    if fake_mode():
+        return {}
+    from uibridge.adapters.cdp import CdpContent
+
+    return {"cdp": lambda target: CdpContent()}
+
+
+def launcher() -> Launcher | None:
+    if fake_mode():
+        return None
+    from uibridge.adapters.cdp import CdpLauncher
+
+    return CdpLauncher()
+
+
+def content_ready(name: str, target: WindowTarget) -> bool:
+    """Whether a content provider can attach right now (CDP: a debugging port is open)."""
+    if fake_mode() or name != "cdp":
+        return True
+    from uibridge.adapters.cdp import find_port
+
+    return find_port(target.pid) is not None
+
+
+def adapter_label(router, target: WindowTarget, detection) -> str:
+    """What attach will really use, for list_apps / `uibridge apps`."""
+    chosen = detection.chosen
+    if chosen in router.contents and not content_ready(chosen, target):
+        return f"base_uia (no debugging port: launch with_cdp for {chosen})"
+    if chosen != detection.preferred:
+        return f"{chosen} (prefers {detection.preferred})"
+    return chosen
+
+
+def router_kwargs() -> dict:
+    return {"enrichers": enrichers(), "contents": contents(), "launcher": launcher()}

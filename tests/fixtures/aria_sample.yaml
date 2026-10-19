@@ -1,0 +1,26 @@
+- main [ref=e2]:
+  - heading "Hello" [level=1] [ref=e3]
+  - generic [ref=e4]:
+    - text: Name
+    - textbox "Name" [ref=e5]
+  - generic [ref=e6]:
+    - checkbox "I agree" [ref=e7]
+    - text: I agree
+  - combobox "Color" [ref=e8]:
+    - option "Red" [selected]
+    - option "Green"
+  - button "Run" [ref=e9]
+  - button "Off" [disabled] [ref=e10]
+  - link "About us" [ref=e11] [cursor=pointer]:
+    - /url: /about
+  - list "Items" [ref=e12]:
+    - listitem [ref=e13]: One
+    - listitem [ref=e14]: Two
+  - group [ref=e15]:
+    - generic "More" [ref=e16]
+  - tablist [ref=e17]:
+    - tab "Tab A" [selected] [ref=e18]
+    - tab "Tab B" [ref=e19]
+  - menuitemcheckbox "Word Wrap" [checked] [ref=e20]
+  - iframe [ref=e21]:
+    - button "Inside frame" [ref=f1e2]

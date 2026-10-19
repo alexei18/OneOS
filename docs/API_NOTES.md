@@ -302,3 +302,13 @@ Full `children()` walk with all properties: Notepad 66 nodes 0.09–0.13 s, Calc
   `launch(..., run_as_invoker=True)` sets `__COMPAT_LAYER=RunAsInvoker` for the child only.
 - **Headless agent check:** `claude -p "<task>" --mcp-config <file> --strict-mcp-config --allowedTools
   "mcp__uibridge__*" --output-format json < /dev/null` (pass stdin explicitly or it waits 3 s).
+
+## Phase 6 additions: CDP (2026-10-19)
+
+- ai-mode aria snapshot grammar: `- role "name" [attr] [ref=eN]: text`, `- text: …`, `- /url: …`; `<option>`s of a
+  native select have no ref. `page.get_by_ref("eN")` stays valid for elements still present in the latest
+  snapshot (refs are stable for unchanged elements; changed ones get new refs). `Locator.normalize()` →
+  `get_by_role(...)` string for traces.
+- Playwright sync API is thread-bound: all calls go through one worker thread (`adapters/cdp.py`).
+- VS Code is single-instance: a second `Code.exe --remote-debugging-port` hands off and exits; use
+  `--user-data-dir <new folder>`. Docker Desktop's backend restarts its UI without the flag: no CDP possible.

@@ -7,6 +7,8 @@ Matching a new snapshot against known refs, top-down, one sibling list at a time
      are paired in order with the old unclaimed refs
      of that key, only if both groups have the same size. Keeps refs when other siblings
      are inserted or removed, including identical unnamed wrappers (common in UIA trees).
+  3. a renamed container (it has children, on both sides) keeps its ref when it is the only
+     unmatched container of its role + class under that parent; leaves never match this way.
 The root of a full snapshot reuses the app's previous root ref when role, automation_id and
 class_name match, so a window title change (e.g. gaining "*") keeps every ref below it.
 Otherwise the node gets a new ref. Groups of different sizes never match: we do not guess.
@@ -137,10 +139,12 @@ class RefRegistry:
 
         by_exact: dict[tuple, list[str]] = {}
         by_parent_local: dict[tuple, list[str]] = {}
+        by_parent: dict[str | None, list[str]] = {}
         for e in self._entries.values():
             if e.app_id == app_id:
                 by_exact.setdefault(e.fingerprint.key(), []).append(e.id)
                 by_parent_local.setdefault((e.parent, e.fingerprint.local_key()), []).append(e.id)
+                by_parent.setdefault(e.parent, []).append(e.id)
 
         claimed: set[str] = set()
         stats = AssignStats()
@@ -197,6 +201,20 @@ class RefRegistry:
                     for i, ref in zip(idxs, old):
                         refs[i] = ref
                         claimed.add(ref)
+            # rule 3: a renamed *container* (no automation id) is still the same element when it is the only
+            # unmatched container child of this parent with its role + class, on both sides (e.g. a pane or a
+            # page named after the window title). Leaves never match this way: a removed button and an
+            # inserted one must not be paired just because they are the last ones left.
+            by_kind: dict[tuple, list[int]] = {}
+            for i, fp in enumerate(fps):
+                if refs[i] is None and node.children[i].children:
+                    by_kind.setdefault((fp.role, fp.class_name), []).append(i)
+            for (role, cls), idxs in by_kind.items():
+                old = [r for r in by_parent.get(node.ref, []) if r not in claimed and r in by_parent
+                       and (self._entries[r].fingerprint.role, self._entries[r].fingerprint.class_name) == (role, cls)]
+                if len(idxs) == 1 and len(old) == 1:
+                    refs[idxs[0]] = old[0]
+                    claimed.add(old[0])
             for child, fp, ref in zip(node.children, fps, refs):
                 bind(child, fp, ref, node.ref)
 

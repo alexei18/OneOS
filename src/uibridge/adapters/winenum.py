@@ -54,7 +54,7 @@ def _child_classes(hwnd: int) -> list[str]:
     return sorted(classes)
 
 
-def _electron_resources(exe: str | None) -> str | None:
+def electron_resources(exe: str | None) -> str | None:
     """Electron apps ship resources/app.asar or resources/app, next to the exe or one folder
     down (VS Code: <install>/<commit>/resources/app)."""
     if not exe:
@@ -92,7 +92,7 @@ def describe_window(hwnd: int) -> WindowTarget:
         child_classes=_child_classes(hwnd),
         modules=modules,
         child_processes=children,
-        electron_resources=_electron_resources(exe),
+        electron_resources=electron_resources(exe),
         notes=notes,
     )
 
