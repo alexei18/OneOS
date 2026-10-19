@@ -1,0 +1,20 @@
+{
+  "phase": 7,
+  "date": "2026-10-19",
+  "note": "One headless Claude Code agent run per scenario over uibridge MCP --debug (claude -p, only mcp__uibridge__* tools). 'sessions' = MCP trace of the run, 'inspect' = `uibridge inspect --depth 8` taken right after (when the window was still open). Docker Desktop reuses the Phase 6 run (same adapter code).",
+  "runs": [
+    {"app": "regedit", "framework": "win32", "scenario": "HKCU\\Software, select a subkey, read the values table (read-only)", "result": "PASS", "sessions": ["20261019-205302_mcp"], "inspect": ["20261019-205333_regedit-exe"]},
+    {"app": "charmap", "framework": "win32", "scenario": "pick a character, Select, Copy, read 'Characters to copy'", "result": "PASS", "sessions": ["20261019-205347_mcp"], "inspect": ["20261019-205415_charmap-exe"]},
+    {"app": "Run dialog", "framework": "win32", "scenario": "type notepad, OK, confirm Notepad opened", "result": "PASS", "sessions": ["20261019-205422_mcp"], "inspect": []},
+    {"app": "classic Open dialog (WinForms OpenFileDialog)", "framework": "win32", "scenario": "open the dialog, go to C:\\Windows, type win.ini, Cancel", "result": "FAIL", "sessions": ["20261019-205447_mcp"], "inspect": ["20261019-205711_powershell-exe"]},
+    {"app": "Calculator", "framework": "uwp", "scenario": "12 × 7 by buttons, read the display", "result": "PASS", "sessions": ["20261019-210043_mcp"], "inspect": []},
+    {"app": "Settings (About)", "framework": "uwp", "scenario": "open ms-settings:about, read device name and edition", "result": "PASS", "sessions": ["20261019-210121_mcp"], "inspect": []},
+    {"app": "Notepad (Win11)", "framework": "winui", "scenario": "type in a new tab, read back, close without saving", "result": "PASS", "sessions": ["20261019-210145_mcp"], "inspect": []},
+    {"app": "VS Code (temp profile, CDP)", "framework": "electron", "scenario": "palette: Toggle Word Wrap, then read the Output panel", "result": "FAIL", "sessions": ["20261019-210233_mcp"], "inspect": []},
+    {"app": "Docker Desktop (no CDP possible)", "framework": "electron", "scenario": "read Containers page and Settings > General (Phase 6 run)", "result": "PASS", "sessions": ["20261019-183315_mcp"], "inspect": []},
+    {"app": "WSL Settings", "framework": "webview2", "scenario": "with_cdp launch, read first page, navigate to another page", "result": "PASS (base_uia; CDP failed)", "sessions": ["20261019-210353_mcp"], "inspect": ["20261019-210436_wslsettings-exe"]},
+    {"app": "PowerShell ISE", "framework": "wpf", "scenario": "describe the window, type Get-Date in the script pane, read back", "result": "PASS", "sessions": ["20261019-210442_mcp"], "inspect": ["20261019-210525_powershell-ise-exe"]},
+    {"app": "WinForms demo (tests/apps)", "framework": "winforms", "scenario": "textbox, checkbox, list, combobox, Apply, read status", "result": "PASS", "sessions": ["20261019-210533_mcp"], "inspect": ["20261019-210609_powershell-exe"]},
+    {"app": "jconsole (JDK 21, Swing)", "framework": "java", "scenario": "snapshot quality of the New Connection dialog, Cancel", "result": "FAIL", "sessions": ["20261019-210615_mcp"], "inspect": ["20261019-210725_jconsole-exe"]}
+  ]
+}
