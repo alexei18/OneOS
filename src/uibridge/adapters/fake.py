@@ -115,6 +115,7 @@ class FakeAdapter:
     @property
     def target(self) -> WindowTarget:
         return WindowTarget(
+            app_id=f"fake-{self.app['pid']}",
             pid=self.app["pid"],
             title=self.app["title"],
             process_name=self.app["process"],
@@ -144,7 +145,7 @@ class FakeAdapter:
         loc = root.locator if root and root.locator else "/"
         return {"locator": loc, "tree": self._cut(self._locate(loc), depth)}
 
-    def act(self, ref: Ref, action: Action) -> ActionResult:
+    def act(self, ref: Ref, action: Action, dry_run: bool = False) -> ActionResult:
         start = time.perf_counter()
         loc = ref.locator or "/"
         call = f"FakeAdapter.{action.kind}(locator={loc!r}"
@@ -166,6 +167,9 @@ class FakeAdapter:
         states: list[str] = d.setdefault("states", [])
         if State.DISABLED in states:
             return fail(f"{role} {d.get('name')!r} is disabled")
+        if dry_run:
+            return ActionResult(ok=True, strategy="pattern", native_call=f"DRY-RUN: {call}",
+                                duration_ms=(time.perf_counter() - start) * 1000)
 
         before = _state_hash(d)
         self._apply(d, loc, action)

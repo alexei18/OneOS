@@ -24,6 +24,7 @@ class PruneStats(BaseModel):
     truncated: int = 0  # children announced as "… N more" instead of shown
     collapsed: int = 0  # children folded into their parent's line
     text_truncated: int = 0  # names/values cut at max_text
+    glyphs: int = 0  # icon-font glyph texts dropped
 
 
 class AIView(BaseModel):
@@ -40,6 +41,13 @@ def _quote(text: str) -> str:
     only quotes and control characters are escaped."""
     out = "".join(_ESCAPES.get(c, f"\\x{ord(c):02x}" if ord(c) < 32 else c) for c in text)
     return f'"{out}"'
+
+
+def is_glyph(text: str | None) -> bool:
+    """Icon-font glyphs (Segoe MDL2/Fluent icons) live in the Unicode Private Use Area; as text
+    they carry no meaning for the agent (e.g. Calculator's "\\ue947" next to "Multiply by")."""
+    stripped = (text or "").strip()
+    return bool(stripped) and all(0xE000 <= ord(c) <= 0xF8FF or ord(c) >= 0xF0000 for c in stripped)
 
 
 def estimate_tokens(text: str) -> int:
@@ -83,6 +91,12 @@ def render(
         stats.hidden += sum(1 for _ in node.walk())
         return True
 
+    def glyph_leaf(node: Node) -> bool:
+        if node.role == Role.TEXT and node.child_count == 0 and is_glyph(node.name):
+            stats.glyphs += 1
+            return True
+        return False
+
     def is_simple_item(n: Node) -> bool:
         return n.role in SIMPLE_ITEMS and bool(n.name) and n.child_count == 0 and n.states <= DEFAULT_STATES
 
@@ -118,6 +132,9 @@ def render(
             and kids[0].child_count == 0
         ):
             stats.collapsed += 1
+            if is_glyph(kids[0].name):
+                stats.glyphs += 1
+                return text, True
             return f"{text}: {quote(kids[0].name)}", True
         return text, False
 
@@ -133,7 +150,7 @@ def render(
             stats.truncated += node.child_count
             lines.append(f"{pad}… {node.child_count} more (expand {node.ref})")
             return
-        visible = [k for k in node.children if not hidden(k)]
+        visible = [k for k in node.children if not hidden(k) and not glyph_leaf(k)]
         for child in visible[:max_items]:
             emit(hoist(child), level + 1)
         if len(visible) > max_items:

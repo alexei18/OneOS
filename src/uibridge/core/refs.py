@@ -3,7 +3,8 @@
 Matching a new snapshot against known refs, top-down, one sibling list at a time:
   1. exact fingerprint (role, name, automation_id, class_name, index_in_parent, ancestors);
   2. under the same (already matched) parent ref, siblings sharing a local key
-     (role, name, automation_id, class_name) are paired in order with the old unclaimed refs
+     (role + automation_id if set, else role + name; + class_name, see model.identity_key)
+     are paired in order with the old unclaimed refs
      of that key, only if both groups have the same size. Keeps refs when other siblings
      are inserted or removed, including identical unnamed wrappers (common in UIA trees).
 The root of a full snapshot reuses the app's previous root ref when role, automation_id and
@@ -16,10 +17,12 @@ binds refs by position.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from uibridge.core.adapter import FULL_DEPTH, Adapter, LocatorNotFound
-from uibridge.core.model import Fingerprint, Node, Ref
+from uibridge.core.model import Fingerprint, Node, Ref, State
 from uibridge.core.tracer import Tracer
 
 
@@ -49,9 +52,23 @@ class _Entry:
     fingerprint: Fingerprint
     locator: str | None
     parent: str | None
+    observed: dict = field(default_factory=dict)  # last seen name/value/states, for diffs
 
     def to_ref(self) -> Ref:
         return Ref(id=self.id, app_id=self.app_id, locator=self.locator, fingerprint=self.fingerprint)
+
+    def to_json(self) -> dict:
+        return {"id": self.id, "app_id": self.app_id, "fingerprint": self.fingerprint.model_dump(mode="json"),
+                "locator": self.locator, "parent": self.parent, "observed": self.observed}
+
+    @classmethod
+    def from_json(cls, d: dict) -> _Entry:
+        return cls(d["id"], d["app_id"], Fingerprint.model_validate(d["fingerprint"]), d["locator"],
+                   d["parent"], d["observed"])
+
+
+def _observe(node: Node) -> dict:
+    return {"name": node.name, "value": node.value, "states": [s.value for s in State if s in node.states]}
 
 
 @dataclass
@@ -59,6 +76,7 @@ class AssignStats:
     new: list[str] = field(default_factory=list)
     reused: list[str] = field(default_factory=list)
     gone: list[str] = field(default_factory=list)
+    changed: dict[str, dict[str, list]] = field(default_factory=dict)  # ref -> field -> [old, new]
 
 
 def _describe(node: Node) -> dict:
@@ -74,6 +92,34 @@ class RefRegistry:
         self._live: dict[str, set[str]] = {}  # app_id -> refs in last full snapshot
         self._roots: dict[str, str] = {}  # app_id -> root ref of last full snapshot
         self._next = 1
+
+    def save(self, path: Path, app_id: str, pid: int) -> None:
+        """Persist one app's refs so a later process (e.g. the next CLI call) can resolve them."""
+        state = {
+            "app_id": app_id,
+            "pid": pid,
+            "next": self._next,
+            "root": self._roots.get(app_id),
+            "live": sorted(self._live.get(app_id, set())),
+            "entries": [e.to_json() for e in self._entries.values() if e.app_id == app_id],
+        }
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
+
+    def load(self, path: Path, app_id: str, pid: int) -> bool:
+        """Load refs saved by `save`. Returns False (and loads nothing) if absent or from another process."""
+        if not path.exists():
+            return False
+        state = json.loads(path.read_text(encoding="utf-8"))
+        if state["app_id"] != app_id or state["pid"] != pid:
+            return False
+        for d in state["entries"]:
+            self._entries[d["id"]] = _Entry.from_json(d)
+        self._next = max(self._next, state["next"])
+        if state["root"]:
+            self._roots[app_id] = state["root"]
+        self._live[app_id] = set(state["live"])
+        return True
 
     def get(self, ref_id: str) -> Ref:
         entry = self._entries.get(ref_id)
@@ -120,8 +166,12 @@ class RefRegistry:
                 stats.new.append(ref)
             else:
                 stats.reused.append(ref)
+                before, now = self._entries[ref].observed, _observe(node)
+                diff = {k: [before.get(k), v] for k, v in now.items() if before.get(k) != v}
+                if diff:
+                    stats.changed[ref] = diff
             claimed.add(ref)
-            self._entries[ref] = _Entry(ref, app_id, fp, node.meta.locator, parent)
+            self._entries[ref] = _Entry(ref, app_id, fp, node.meta.locator, parent, _observe(node))
             node.ref = ref
             node.meta.fingerprint = fp
             match_children(node, (*fp.ancestors, (str(node.role), node.name)))
@@ -173,7 +223,9 @@ class RefRegistry:
             {
                 "root_ref": root_ref,
                 "refs": {"new": stats.new, "reused": stats.reused, "gone": stats.gone},
-                "counts": {"new": len(stats.new), "reused": len(stats.reused), "gone": len(stats.gone)},
+                "counts": {"new": len(stats.new), "reused": len(stats.reused), "gone": len(stats.gone),
+                           "changed": len(stats.changed)},
+                "changed": stats.changed,
                 "tree": tree.model_dump(mode="json"),
             },
             app_id=app_id,

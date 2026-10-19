@@ -2,7 +2,7 @@ import pytest
 
 from conftest import find, read_events, snap
 from uibridge.adapters.fake import FakeAdapter
-from uibridge.core.refs import AmbiguousRefError, StaleRefError, UnknownRefError
+from uibridge.core.refs import AmbiguousRefError, RefRegistry, StaleRefError, UnknownRefError
 
 
 @pytest.fixture
@@ -38,9 +38,44 @@ def test_small_changes_keep_unchanged_refs(dialog, registry):
     assert after["Run *"] == before["Run"]
     for unchanged in ["OK", "Run icon", "Open:", "Close", "Hidden hint"]:
         assert after[unchanged] == before[unchanged], unchanged
-    assert after["Browse…"] not in before.values()
+    # renamed but has an automation id: same element, same ref, reported as changed
+    assert after["Browse…"] == before["Browse..."]
+    assert stats_event["payload"]["changed"][before["Browse..."]]["name"] == ["Browse...", "Browse…"]
     assert after["Help"] not in before.values()
-    assert before["Cancel"] in gone and before["Browse..."] in gone
+    assert gone == [before["Cancel"]]
+
+
+def test_renamed_node_without_automation_id_gets_new_ref(registry):
+    adapter = FakeAdapter.load("long_list")
+    before = refs_by_name(snap(adapter, registry))
+    adapter.fixture["root"]["children"][0]["children"][1]["name"] = "Item two"
+    after = refs_by_name(snap(adapter, registry))
+    assert after["Item two"] not in before.values()
+    assert after["Item 001"] == before["Item 001"] and after["Item 003"] == before["Item 003"]
+
+
+def test_changed_states_and_values_are_reported(registry):
+    adapter = FakeAdapter.load("win32_dialog")
+    tree = snap(adapter, registry)
+    combo = next(n for n in tree.walk() if n.role == "combobox")
+    adapter.fixture["root"]["children"][2]["children"][0]["value"] = "notepad"
+    stats = registry.assign(adapter.snapshot(None, 64), "app1")
+    assert stats.changed == {combo.ref: {"value": ["", "notepad"]}}
+
+
+def test_save_and_load_roundtrip(dialog, registry, tracer, tmp_path):
+    tree = snap(dialog, registry)
+    path = tmp_path / "refs.json"
+    registry.save(path, "app1", pid=4120)
+    other = RefRegistry(tracer)
+    assert not other.load(path, "app1", pid=999)  # different process: refs are meaningless
+    assert other.load(path, "app1", pid=4120)
+    cancel = find(tree, "Cancel")
+    ref, node = other.resolve(cancel.ref, dialog)
+    assert node.name == "Cancel"
+    again = dialog.snapshot(None, 64)
+    other.assign(again, "app1")
+    assert [n.ref for n in again.walk()] == [n.ref for n in tree.walk()]
 
 
 def test_subtree_snapshot_reuses_refs(dialog, registry):

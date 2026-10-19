@@ -119,6 +119,15 @@ def test_long_value_truncated_and_control_chars_escaped(tracer):
     assert v.stats.text_truncated == 1
 
 
+def test_icon_glyph_text_is_dropped(tracer):
+    button = Node(ref="e2", role=Role.BUTTON, name="Multiply by", children=[Node(role=Role.TEXT, name="")])
+    loose = Node(role=Role.TEXT, name="  ")
+    digit = Node(ref="e4", role=Role.BUTTON, name="One", children=[Node(role=Role.TEXT, name="1")])
+    v = view(Node(role=Role.WINDOW, children=[button, loose, digit]), tracer)
+    assert v.text.splitlines()[1:3] == ['  - button "Multiply by" [e2]', '  - button "One" [e4]: "1"']
+    assert v.stats.glyphs == 2
+
+
 def test_child_count_beyond_loaded_children_is_announced(tracer):
     node = Node(ref="e9", role=Role.LIST, name="Lazy", child_count=40)
     assert "  … 40 more (expand e9)" in view(Node(role=Role.WINDOW, children=[node]), tracer).text

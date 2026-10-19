@@ -109,10 +109,18 @@ class Fingerprint(BaseModel):
     ancestors: tuple[tuple[str, str | None], ...] = ()
 
     def key(self) -> tuple:
-        return (*self.local_key(), self.index_in_parent, self.ancestors)
+        return (self.role, self.name, self.automation_id, self.class_name, self.index_in_parent, self.ancestors)
 
     def local_key(self) -> tuple:
-        return (self.role, self.name, self.automation_id, self.class_name)
+        return identity_key(self.role, self.name, self.automation_id, self.class_name)
+
+
+def identity_key(role: Role, name: str | None, automation_id: str | None, class_name: str | None) -> tuple:
+    """Element identity among siblings. An automation_id is a stable identity, so when present
+    the (often volatile) name is left out, e.g. Calculator's display "Display is 0" -> "... 84"."""
+    if automation_id:
+        return (role, "aid", automation_id, class_name)
+    return (role, "name", name, class_name)
 
 
 class NodeMeta(BaseModel):
@@ -150,7 +158,7 @@ class Node(BaseModel):
         return [s.value for s in State if s in states]
 
     def local_key(self) -> tuple:
-        return (self.role, self.name, self.meta.automation_id, self.meta.class_name)
+        return identity_key(self.role, self.name, self.meta.automation_id, self.meta.class_name)
 
     def walk(self):
         """Pre-order iteration over this node and all descendants."""

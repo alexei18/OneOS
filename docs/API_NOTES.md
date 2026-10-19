@@ -229,3 +229,39 @@ What the probe taught us, for the next phases:
   rule from SPEC §5.
 - Names are localized (`"Minimizare"`, `"Sistem"`). Do not match on English names; use
   `automation_id` (`Minimize-Restore`, `SystemMenuBar`) in fingerprints.
+
+---
+
+## Phase 2 additions (2026-10-19)
+
+### UIA ControlTypeIds
+`raw["control_type_id"]` is the UIA ControlTypeId (50000 Button … 50040 AppBar), verified against
+https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-controltype-ids. Table: `adapters/uia_roles.py`.
+We map from the id, not from `Element.role`: xa11y's snake_case role is lossy (Pane 50033 and
+TitleBar 50037 both come back as `group`; Edit/Document as `text_field`/`web_area`).
+
+xa11y role strings seen: `window, dialog, group, web_area, tab_group, tab, list, static_text, button,
+menu_bar, menu_item, progress_bar, image`.
+xa11y action strings seen: `press, focus, set_value, toggle, expand, collapse, select, activate, close,
+minimize, maximize, restore, move_to, resize_to`. `show_menu`, `scroll_into_view`, `increment`,
+`decrement` exist in the stub.
+
+### Synthetic input
+- `xa11y.input_sim()` is a **factory function** returning an `InputSim`; it is not a module-level object.
+- `Element.activate()` raises `PlatformError: SetForegroundWindow was denied (foreground lock)` when our
+  process may not take the foreground (normal when run from a terminal). Never assume activation worked:
+  base_uia hit-tests mouse targets and checks the foreground window before keys (FINDINGS 2026-10-19).
+
+### Windows
+- UWP apps (Calculator) appear in xa11y under the **ApplicationFrameHost** process; the window's
+  `stable_id` is the top-level `ApplicationFrameWindow` hwnd. Find windows by `stable_id == "hwnd:0x…"`
+  (`App.by_pid(pid, timeout=0).windows()` first, then a scan of `App.list()`).
+- Cloaked UWP `Windows.UI.Core.CoreWindow` top-levels must be filtered with `DwmGetWindowAttribute(DWMWA_CLOAKED=14)`.
+- Electron signal: `resources/app.asar` *or* `resources/app` next to the exe or one folder below
+  (VS Code: `<install>/<commit>/resources/app`). Chrome loads `chrome.dll`, Electron apps do not.
+- Win11 Notepad and Terminal host WinUI content (`Microsoft.UI.Content.DesktopChildSiteBridge` /
+  `Windows.UI.Composition.DesktopWindowContentBridge`); Win11 Explorer has those *and* real Win32 controls.
+
+### Performance
+Full `children()` walk with all properties: Notepad 66 nodes 0.09–0.13 s, Calculator 89 nodes 0.10–0.14 s.
+`psutil.Process.memory_maps()`: 7–100 ms per process.
