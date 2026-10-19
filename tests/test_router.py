@@ -9,7 +9,7 @@ from uibridge.core.tracer import Tracer
 
 
 def make_router(tracer, fake, state_dir) -> Router:
-    return Router(tracer, {"base_uia": lambda: fake}, state_dir, settle_s=0)
+    return Router(tracer, {"base_uia": lambda target: fake}, state_dir, settle_s=0)
 
 
 @pytest.fixture
@@ -96,3 +96,29 @@ def test_resolution_errors_are_traced_and_raised(router, tracer, fake):
         router.act(app_id, cancel, Action(kind=ActionKind.CLICK))
     error = [e for e in read_events(tracer) if e["kind"] == "error"][-1]
     assert error["payload"]["context"]["op"] == "act" and "StaleRefError" in error["payload"]["message"]
+
+
+def test_app_of_finds_the_refs_app(router, fake):
+    ref = ref_named(router, fake.target.app_id, "Cancel")
+    assert router.app_of(ref) == fake.target.app_id
+
+
+def test_wait_for_returns_all_matches(router, fake):
+    app_id = fake.target.app_id
+    assert [n.name for n in router.wait_for(app_id, role="button", name="cancel")] == ["Cancel"]
+    assert len(router.wait_for(app_id, role="button")) == 4  # OK, Cancel, Browse..., Close
+    assert router.wait_for(app_id, name="hidden")[0].name == "Hidden hint"
+
+
+def test_wait_for_times_out_with_seen_names(router, fake, tracer):
+    with pytest.raises(TimeoutError, match="'Cancel'"):
+        router.wait_for(fake.target.app_id, role="button", name="Apply", timeout_s=0, poll_s=0)
+    assert read_events(tracer)[-1]["kind"] == "error"
+
+
+def test_minimized_window_is_called_out_in_the_header(router, fake, monkeypatch):
+    raw = fake.raw_dump
+    monkeypatch.setattr(fake, "raw_dump", lambda root, depth: {**raw(root, depth), "window_state": {"minimized": True}})
+    fake.fixture["root"]["children"] = []
+    header = router.snapshot(fake.target.app_id).view.text.splitlines()[0]
+    assert header.startswith('app "Run" [win32] pid=4120 minimized (this app exposes no content while minimized')

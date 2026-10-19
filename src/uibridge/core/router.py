@@ -9,6 +9,8 @@ Refs are persisted per app in state_dir so separate processes (CLI calls) share 
 
 from __future__ import annotations
 
+import shutil
+import subprocess
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -39,7 +41,7 @@ class SnapshotResult:
 
 
 class Router:
-    def __init__(self, tracer: Tracer, adapters: dict[str, Callable[[], Adapter]], state_dir: Path | str,
+    def __init__(self, tracer: Tracer, adapters: dict[str, Callable[[WindowTarget], Adapter]], state_dir: Path | str,
                  settle_s: float = SETTLE_S) -> None:
         self.tracer = tracer
         self.adapters = adapters
@@ -60,7 +62,7 @@ class Router:
 
     def attach(self, target: WindowTarget) -> Attached:
         detection = self.detect(target)
-        adapter = self.adapters[detection.chosen]()
+        adapter = self.adapters[detection.chosen](target)
         try:
             adapter.attach(target)
         except Exception as e:
@@ -80,7 +82,13 @@ class Router:
             self.tracer.emit("snapshot_raw", {"root_ref": ref, "adapter": app.adapter.name, "raw": raw},
                              app_id=app_id)
             tree, _ = self._snapshot_tree(app, root_ref=ref)
-            header = None if ref else app_header(app.target.title, app.detection.framework, app.target.pid)
+            header = None
+            if ref is None:
+                header = app_header(app.target.title, app.detection.framework, app.target.pid)
+                if (raw.get("window_state") or {}).get("minimized"):
+                    header += " minimized"
+                    if tree.child_count == 0:
+                        header += " (this app exposes no content while minimized; restore its window, then snapshot)"
             view = render(tree, self.tracer, app_id=app_id, header=header, depth=depth,
                           include_offscreen=include_offscreen)
         except Exception as e:
@@ -88,6 +96,80 @@ class Router:
             raise
         self._save(app)
         return SnapshotResult(view=view, tree=tree, raw=raw)
+
+    def app_of(self, ref: str) -> str:
+        """Refs are session-scoped; find which attached app a ref belongs to."""
+        app_id = self.registry.get(ref).app_id
+        if app_id not in self.apps:
+            raise KeyError(f"ref {ref} belongs to {app_id}, which is not attached; call attach({app_id!r})")
+        return app_id
+
+    def wait_for(self, app_id: str, role: str | None = None, name: str | None = None, timeout_s: float = 10.0,
+                 poll_s: float = 0.5) -> list[Node]:
+        """Poll full snapshots until nodes match (role equal, name/value contains `name`, case-insensitive).
+        Returns every match of the first snapshot that has any; raises TimeoutError otherwise."""
+        if role is None and name is None:
+            raise ValueError("wait_for needs a role, a name, or both")
+        app = self.apps[app_id]
+        needle = (name or "").lower()
+
+        def matches(n: Node) -> bool:
+            if role is not None and n.role != role:
+                return False
+            return not needle or needle in (n.name or "").lower() or needle in (n.value or "").lower()
+
+        deadline = time.monotonic() + timeout_s
+        try:
+            while True:
+                tree, _ = self._snapshot_tree(app)
+                found = [n for n in tree.walk() if matches(n)]
+                self._save(app)
+                if found:
+                    return found
+                if time.monotonic() >= deadline:
+                    seen = sorted({n.name for n in tree.walk() if n.name and (role is None or n.role == role)})
+                    raise TimeoutError(
+                        f"nothing matched role={role!r} name={name!r} after {timeout_s:g}s; "
+                        f"{role or 'node'} names seen: {', '.join(repr(s) for s in seen[:15]) or 'none'}"
+                    )
+                time.sleep(poll_s)
+        except Exception as e:
+            self.tracer.error(e, {"op": "wait_for", "role": role, "name": name}, app_id=app_id)
+            raise
+
+    def render_node(self, app_id: str, node: Node, depth: int = 2) -> AIView:
+        return render(node, self.tracer, app_id=app_id, depth=depth)
+
+    def launch(self, path_or_name: str, args: list[str], windows: Callable[[], list[WindowTarget]],
+               timeout_s: float = 15.0) -> Attached:
+        """Start a program and attach to the window it opens. UWP launchers (calc.exe) hand off to
+        another process, so a single new window from any process is accepted."""
+        exe = shutil.which(path_or_name) or path_or_name
+        before = {w.app_id for w in windows()}
+        cmd = [exe, *args]
+        self.tracer.emit("action_request", {"launch": path_or_name, "args": args})
+        try:
+            proc = subprocess.Popen(cmd)
+        except OSError as e:
+            self.tracer.error(e, {"op": "launch", "cmd": cmd})
+            raise FileNotFoundError(f"cannot start {path_or_name!r}: {e}; pass a full path") from e
+        self.tracer.emit("action_native", {"strategy": "process", "native_call": f"subprocess.Popen({cmd!r})",
+                                           "pid": proc.pid})
+        deadline = time.monotonic() + timeout_s
+        new: list[WindowTarget] = []
+        while time.monotonic() < deadline:
+            time.sleep(0.5)
+            new = [w for w in windows() if w.app_id not in before]
+            own = [w for w in new if w.pid == proc.pid]
+            if len(own) == 1 or (not own and len(new) == 1):
+                return self.attach((own or new)[0])
+        listed = "; ".join(f"{w.app_id} {w.process_name} {w.title!r}" for w in new)
+        error = RuntimeError(
+            f"started {path_or_name!r} (pid {proc.pid}) but found {len(new)} new windows in {timeout_s:g}s"
+            + (f": {listed}; attach one of these app_ids" if new else "; call list_apps and attach it")
+        )
+        self.tracer.error(error, {"op": "launch", "cmd": cmd})
+        raise error
 
     def read(self, app_id: str, ref: str) -> Node:
         app = self.apps[app_id]

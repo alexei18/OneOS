@@ -265,3 +265,18 @@ minimize, maximize, restore, move_to, resize_to`. `show_menu`, `scroll_into_view
 ### Performance
 Full `children()` walk with all properties: Notepad 66 nodes 0.09–0.13 s, Calculator 89 nodes 0.10–0.14 s.
 `psutil.Process.memory_maps()`: 7–100 ms per process.
+
+## Phase 3 additions: mcp 2.3.0 in practice (2026-10-19)
+
+- Sync `@mcp.tool` functions run via `anyio.to_thread.run_sync` (worker threads). xa11y elements work
+  across threads (probed), but Router/RefRegistry are not thread-safe → every tool body runs under one lock.
+- `@mcp.tool(structured_output=False, description=...)` keeps a `str` return as plain text content (no
+  `{"result": ...}` structured copy).
+- Raise `mcp.server.mcpserver.exceptions.ToolError(msg)`: the client gets `CallToolResult(is_error=True)`
+  with `msg` as text. Other exceptions are also turned into `is_error` results with `str(exc)`.
+- Parameter constraints via `Annotated[int, Field(ge=1, le=12)]`; enums (`ActionKind`, `Role`) become JSON
+  schema enums.
+- Smoke-test client: `Client(StdioServerParameters(command="uv", args=[...], env=..., cwd=...),
+  read_timeout_seconds=60)`; `(await client.list_tools()).tools`, `await client.call_tool(name, args)` →
+  `.content[i].text`, `.is_error`. Tests use `@pytest.mark.anyio` with an `anyio_backend` fixture = "asyncio".
+- `claude mcp add` health check spawns the server once: that leaves an empty `traces/<ts>_mcp` session.

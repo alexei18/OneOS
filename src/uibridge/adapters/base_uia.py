@@ -120,7 +120,12 @@ class BaseUIAAdapter:
 
     def raw_dump(self, root: Ref | None, depth: int) -> dict:
         loc = root.locator if root and root.locator else self._sid
-        return {"adapter": self.name, "window": self._sid, "tree": self._raw(self._locate(loc), loc, depth)}
+        tree = self._raw(self._locate(loc), loc, depth)
+        try:
+            minimized = self._window.minimized
+        except xa11y.XA11yError:
+            minimized = None
+        return {"adapter": self.name, "window": self._sid, "window_state": {"minimized": minimized}, "tree": tree}
 
     def act(self, ref: Ref, action: Action, dry_run: bool = False) -> ActionResult:
         start = time.perf_counter()

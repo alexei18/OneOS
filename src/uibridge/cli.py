@@ -6,28 +6,23 @@ import argparse
 import json
 import re
 import sys
-from pathlib import Path
 
 from pydantic import ValidationError
 
-from uibridge.adapters.base_uia import BaseUIAAdapter
-from uibridge.adapters.winenum import list_windows
+from uibridge import backends
 from uibridge.core.adapter import WindowTarget
 from uibridge.core.model import Action, ActionKind
 from uibridge.core.refs import RefResolutionError
 from uibridge.core.router import Router
 from uibridge.core.tracer import Tracer
 
-TRACES = Path("traces")
-ADAPTERS = {"base_uia": BaseUIAAdapter}
-
-
 def _router(app: str) -> Router:
-    return Router(Tracer(TRACES, app), ADAPTERS, TRACES / "_refs")
+    traces = backends.traces_dir()
+    return Router(Tracer(traces, app), backends.factories(), traces / "_refs")
 
 
 def _pick(pattern: str) -> WindowTarget | None:
-    windows = list_windows()
+    windows = backends.windows()
     exact = [w for w in windows if w.app_id == pattern]
     matches = exact or [w for w in windows if re.search(pattern, w.title, re.IGNORECASE)]
     if len(matches) == 1:
@@ -41,7 +36,7 @@ def _pick(pattern: str) -> WindowTarget | None:
 
 def cmd_apps(_: argparse.Namespace) -> int:
     router = _router("apps")
-    rows = [(w, router.detect(w)) for w in list_windows()]
+    rows = [(w, router.detect(w)) for w in backends.windows()]
     print(f"{'app_id':<10} {'pid':>6}  {'process':<24} {'framework':<10} {'adapter':<22} title")
     for w, d in rows:
         adapter = d.chosen if d.preferred == d.chosen else f"{d.preferred}->{d.chosen}"
@@ -106,6 +101,13 @@ def cmd_act(args: argparse.Namespace) -> int:
     return 0 if result.ok else 1
 
 
+def cmd_serve(args: argparse.Namespace) -> int:
+    from uibridge.mcp_server import serve  # stdout is the MCP channel from here on: no prints
+
+    serve(debug=args.debug, dry_run=args.dry_run)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     sys.stdout.reconfigure(encoding="utf-8")  # window titles contain non-cp1252 characters
     sys.stderr.reconfigure(encoding="utf-8")
@@ -126,8 +128,12 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--value", help="text for set_value/type_text, keys for press_keys (e.g. Ctrl+S)")
     a.add_argument("--dry-run", action="store_true", help="resolve and log the native call, do not execute")
 
+    s = sub.add_parser("serve", help="run the MCP server on stdio")
+    s.add_argument("--debug", action="store_true", help="append the trace event id to every response")
+    s.add_argument("--dry-run", action="store_true", help="never execute actions, only resolve and log them")
+
     args = parser.parse_args(argv)
-    return {"apps": cmd_apps, "inspect": cmd_inspect, "act": cmd_act}[args.cmd](args)
+    return {"apps": cmd_apps, "inspect": cmd_inspect, "act": cmd_act, "serve": cmd_serve}[args.cmd](args)
 
 
 if __name__ == "__main__":
