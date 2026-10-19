@@ -108,6 +108,13 @@ def cmd_serve(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_viewer(args: argparse.Namespace) -> int:
+    from uibridge.viewer.app import serve
+
+    serve(backends.traces_dir(), port=args.port, open_browser=not args.no_browser)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     sys.stdout.reconfigure(encoding="utf-8")  # window titles contain non-cp1252 characters
     sys.stderr.reconfigure(encoding="utf-8")
@@ -132,8 +139,13 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--debug", action="store_true", help="append the trace event id to every response")
     s.add_argument("--dry-run", action="store_true", help="never execute actions, only resolve and log them")
 
+    v = sub.add_parser("viewer", help="debug viewer for traces on http://127.0.0.1:8765")
+    v.add_argument("--port", type=int, default=8765)
+    v.add_argument("--no-browser", action="store_true", help="do not open the browser")
+
     args = parser.parse_args(argv)
-    return {"apps": cmd_apps, "inspect": cmd_inspect, "act": cmd_act, "serve": cmd_serve}[args.cmd](args)
+    return {"apps": cmd_apps, "inspect": cmd_inspect, "act": cmd_act, "serve": cmd_serve,
+            "viewer": cmd_viewer}[args.cmd](args)
 
 
 if __name__ == "__main__":

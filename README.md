@@ -10,6 +10,7 @@ uv run uibridge apps                                   # windows + detected fram
 uv run uibridge inspect --app "Calculator" --depth 8   # raw / normalized / AI view into traces/
 uv run uibridge act --app "Calculator" --ref e64 --action click [--dry-run]
 uv run uibridge serve [--debug] [--dry-run]            # MCP server on stdio
+uv run uibridge viewer                                 # debug viewer on http://127.0.0.1:8765
 ```
 
 ## MCP server
@@ -54,6 +55,21 @@ For a dry-run variant next to it:
 - `UIBRIDGE_TRACES=<dir>`: trace folder (default `traces`).
 - `UIBRIDGE_FAKE=1`: serve the JSON fixtures in `src/uibridge/adapters/fixtures/` as if they were open windows
   (tests, demos; used by the MCP smoke test).
+
+## Debug viewer
+
+`uv run uibridge viewer [--port 8765] [--no-browser]` serves the trace folder on http://127.0.0.1:8765
+(local only) and opens the browser.
+
+- **Sessions**: every CLI / MCP session with framework, adapter, duration, actions, errors and the
+  strategy mix (pattern / native_message / synthetic_input / dry_run). Lots of synthetic input means the
+  translation is not semantic enough yet.
+- **Timeline**: every event, filterable by kind, by ref (`e12`) and errors only; filters live in the URL.
+  Click a row for its full payload. Sessions written right now update live (polling).
+- **Snapshot view**: Raw native | Normalized | AI view side by side, with tokens and pruning stats.
+  Click a ref or node in any pane to highlight the same element in all three.
+- **Action view**: MCP call → request → resolution → native call (strategy) → result → diff on one screen,
+  with links to the pre- and post-action snapshots.
 
 ## Tests
 
