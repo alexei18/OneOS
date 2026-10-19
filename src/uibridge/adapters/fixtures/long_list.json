@@ -1,0 +1,1224 @@
+{
+ "app": {
+  "title": "Long List",
+  "process": "longlist.exe",
+  "pid": 7300,
+  "framework": "winforms",
+  "class_name": "WindowsForms10.Window.8.app.0.1"
+ },
+ "root": {
+  "role": "Window",
+  "name": "Long List",
+  "class_name": "WindowsForms10.Window.8.app.0.1",
+  "children": [
+   {
+    "role": "List",
+    "name": "Items",
+    "automation_id": "itemsList",
+    "class_name": "WindowsForms10.LISTBOX.app.0.1",
+    "children": [
+     {
+      "role": "ListItem",
+      "name": "Item 001"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 002"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 003"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 004"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 005"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 006"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 007"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 008"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 009"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 010"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 011"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 012"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 013"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 014"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 015"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 016"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 017"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 018"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 019"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 020"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 021"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 022"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 023"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 024"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 025"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 026"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 027"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 028"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 029"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 030"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 031"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 032"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 033"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 034"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 035"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 036"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 037"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 038"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 039"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 040"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 041"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 042"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 043"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 044"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 045"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 046"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 047"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 048"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 049"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 050"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 051"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 052"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 053"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 054"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 055"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 056"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 057"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 058"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 059"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 060"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 061"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 062"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 063"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 064"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 065"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 066"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 067"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 068"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 069"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 070"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 071"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 072"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 073"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 074"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 075"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 076"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 077"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 078"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 079"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 080"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 081"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 082"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 083"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 084"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 085"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 086"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 087"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 088"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 089"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 090"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 091"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 092"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 093"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 094"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 095"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 096"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 097"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 098"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 099"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 100"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 101"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 102"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 103"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 104"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 105"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 106"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 107"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 108"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 109"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 110"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 111"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 112"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 113"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 114"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 115"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 116"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 117"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 118"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 119"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 120"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 121"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 122"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 123"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 124"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 125"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 126"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 127"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 128"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 129"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 130"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 131"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 132"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 133"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 134"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 135"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 136"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 137"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 138"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 139"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 140"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 141"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 142"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 143"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 144"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 145"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 146"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 147"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 148"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 149"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 150"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 151"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 152"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 153"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 154"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 155"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 156"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 157"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 158"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 159"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 160"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 161"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 162"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 163"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 164"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 165"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 166"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 167"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 168"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 169"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 170"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 171"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 172"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 173"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 174"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 175"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 176"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 177"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 178"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 179"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 180"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 181"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 182"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 183"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 184"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 185"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 186"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 187"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 188"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 189"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 190"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 191"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 192"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 193"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 194"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 195"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 196"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 197"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 198"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 199"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 200"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 201"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 202"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 203"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 204"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 205"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 206"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 207"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 208"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 209"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 210"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 211"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 212"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 213"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 214"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 215"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 216"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 217"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 218"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 219"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 220"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 221"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 222"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 223"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 224"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 225"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 226"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 227"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 228"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 229"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 230"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 231"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 232"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 233"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 234"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 235"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 236"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 237"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 238"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 239"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 240"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 241"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 242"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 243"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 244"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 245"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 246"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 247"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 248"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 249"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 250"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 251"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 252"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 253"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 254"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 255"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 256"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 257"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 258"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 259"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 260"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 261"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 262"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 263"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 264"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 265"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 266"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 267"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 268"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 269"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 270"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 271"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 272"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 273"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 274"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 275"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 276"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 277"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 278"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 279"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 280"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 281"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 282"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 283"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 284"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 285"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 286"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 287"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 288"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 289"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 290"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 291"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 292"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 293"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 294"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 295"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 296"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 297"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 298"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 299"
+     },
+     {
+      "role": "ListItem",
+      "name": "Item 300"
+     }
+    ]
+   }
+  ]
+ }
+}

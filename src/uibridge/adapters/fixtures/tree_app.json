@@ -1,0 +1,56 @@
+{
+  "app": {"title": "Registry Editor", "process": "regedit.exe", "pid": 5200, "framework": "win32", "class_name": "RegEdit_RegEdit"},
+  "root": {
+    "role": "Window", "name": "Registry Editor", "class_name": "RegEdit_RegEdit",
+    "children": [
+      {"role": "MenuBar", "name": "Application", "automation_id": "MenuBar", "children": [
+        {"role": "MenuItem", "name": "File"},
+        {"role": "MenuItem", "name": "Edit"},
+        {"role": "MenuItem", "name": "View"},
+        {"role": "MenuItem", "name": "Favorites"},
+        {"role": "MenuItem", "name": "Help"}
+      ]},
+      {"role": "Pane", "class_name": "RegEdit_Splitter", "children": [
+        {"role": "Tree", "name": "Registry", "automation_id": "1", "class_name": "SysTreeView32", "children": [
+          {"role": "TreeItem", "name": "Computer", "states": ["expanded", "selected"], "children": [
+            {"role": "TreeItem", "name": "HKEY_CLASSES_ROOT", "states": ["collapsed"]},
+            {"role": "TreeItem", "name": "HKEY_CURRENT_USER", "states": ["expanded"], "children": [
+              {"role": "TreeItem", "name": "AppEvents", "states": ["collapsed"]},
+              {"role": "TreeItem", "name": "Console", "states": ["collapsed"]},
+              {"role": "TreeItem", "name": "Software", "states": ["expanded"], "children": [
+                {"role": "TreeItem", "name": "Microsoft", "states": ["expanded"], "children": [
+                  {"role": "TreeItem", "name": "Office", "states": ["collapsed"]},
+                  {"role": "TreeItem", "name": "Windows", "states": ["collapsed"]}
+                ]},
+                {"role": "TreeItem", "name": "Policies", "states": ["collapsed"]}
+              ]},
+              {"role": "TreeItem", "name": "System", "states": ["collapsed"]}
+            ]},
+            {"role": "TreeItem", "name": "HKEY_LOCAL_MACHINE", "states": ["collapsed"]},
+            {"role": "TreeItem", "name": "HKEY_USERS", "states": ["collapsed"]},
+            {"role": "TreeItem", "name": "HKEY_CURRENT_CONFIG", "states": ["collapsed"]}
+          ]}
+        ]},
+        {"role": "Table", "name": "Values", "automation_id": "2", "class_name": "SysListView32", "children": [
+          {"role": "Header", "children": [
+            {"role": "HeaderItem", "name": "Name"},
+            {"role": "HeaderItem", "name": "Type"},
+            {"role": "HeaderItem", "name": "Data"}
+          ]},
+          {"role": "DataItem", "name": "(Default)", "children": [
+            {"role": "Text", "name": "REG_SZ"}, {"role": "Text", "name": "(value not set)"}
+          ]},
+          {"role": "DataItem", "name": "Path", "children": [
+            {"role": "Text", "name": "REG_EXPAND_SZ"}, {"role": "Text", "name": "%USERPROFILE%\\AppData"}
+          ]},
+          {"role": "DataItem", "name": "Version", "children": [
+            {"role": "Text", "name": "REG_DWORD"}, {"role": "Text", "name": "0x00000002 (2)"}
+          ]}
+        ]}
+      ]},
+      {"role": "StatusBar", "class_name": "msctls_statusbar32", "children": [
+        {"role": "Text", "name": "Computer\\HKEY_CURRENT_USER\\Software\\Microsoft"}
+      ]}
+    ]
+  }
+}

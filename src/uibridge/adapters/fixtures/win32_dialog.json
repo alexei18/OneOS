@@ -1,0 +1,25 @@
+{
+  "app": {"title": "Run", "process": "explorer.exe", "pid": 4120, "framework": "win32", "class_name": "#32770"},
+  "root": {
+    "role": "Dialog", "name": "Run", "class_name": "#32770", "states": ["modal"],
+    "children": [
+      {"role": "Pane", "children": [
+        {"role": "Image", "name": "Run icon", "automation_id": "12301", "class_name": "Static"}
+      ]},
+      {"role": "Text", "name": "Type the name of a program, folder, document, or Internet resource, and Windows will open it for you.", "automation_id": "12289", "class_name": "Static"},
+      {"role": "Pane", "children": [
+        {"role": "ComboBox", "name": "Open:", "automation_id": "12298", "class_name": "ComboBox", "value": "", "states": ["focused", "collapsed"],
+         "children": [
+           {"role": "Edit", "name": "Open:", "automation_id": "1001", "class_name": "Edit", "value": ""}
+         ]}
+      ]},
+      {"role": "Button", "name": "OK", "automation_id": "1", "class_name": "Button", "states": ["disabled"]},
+      {"role": "Button", "name": "Cancel", "automation_id": "2", "class_name": "Button"},
+      {"role": "Button", "name": "Browse...", "automation_id": "12288", "class_name": "Button"},
+      {"role": "Text", "name": "Hidden hint", "automation_id": "12290", "class_name": "Static", "states": ["offscreen"]},
+      {"role": "TitleBar", "automation_id": "TitleBar", "children": [
+        {"role": "Button", "name": "Close", "automation_id": "Close"}
+      ]}
+    ]
+  }
+}
