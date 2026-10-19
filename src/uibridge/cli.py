@@ -18,7 +18,7 @@ from uibridge.core.tracer import Tracer
 
 def _router(app: str) -> Router:
     traces = backends.traces_dir()
-    return Router(Tracer(traces, app), backends.factories(), traces / "_refs")
+    return Router(Tracer(traces, app), backends.factories(), traces / "_refs", enrichers=backends.enrichers())
 
 
 def _pick(pattern: str) -> WindowTarget | None:

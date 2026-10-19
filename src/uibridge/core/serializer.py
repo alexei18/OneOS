@@ -122,7 +122,7 @@ def render(
         ):
             stats.collapsed += len(kids)
             return f"{text}: {', '.join(k.name for k in kids)}", True
-        if node.value:
+        if node.value and node.value != node.name:  # tree items often repeat their name as value
             return f"{text}: {quote(node.value)}", False
         if (
             len(kids) == 1

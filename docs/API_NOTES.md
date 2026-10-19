@@ -280,3 +280,25 @@ Full `children()` walk with all properties: Notepad 66 nodes 0.09–0.13 s, Calc
   read_timeout_seconds=60)`; `(await client.list_tools()).tools`, `await client.call_tool(name, args)` →
   `.content[i].text`, `.is_error`. Tests use `@pytest.mark.anyio` with an `anyio_backend` fixture = "asyncio".
 - `claude mcp add` health check spawns the server once: that leaves an empty `traces/<ts>_mcp` session.
+
+## Phase 5 additions: Win32 (2026-10-19)
+
+- **HWND ↔ UIA:** xa11y's `stable_id` is `hwnd:0x…` for *every* HWND-backed element (not only top-level
+  windows); for dialog controls `automation_id` is the control id (`GetDlgCtrlID`). base_uia stores it in
+  `meta.hwnd`, which is how the win32 enricher matches nodes exactly.
+- **DPI:** call `SetProcessDpiAwarenessContext(PER_MONITOR_AWARE_V2 = -4)` before any coordinate work
+  (`adapters/_dpi.py`). Without it Win32 rects are virtualized (125 % display: 598,312 vs UIA 748,390).
+- **Text across processes:** `win32gui.PyMakeBuffer` is deprecated; use ctypes `SendMessageTimeoutW` with
+  `create_unicode_buffer` + `SMTO_ABORTIFHUNG` (300 ms). Windows marshals messages below WM_USER for standard
+  controls (WM_GETTEXT/SETTEXT, BM_*, CB_*, LB_*, EM_REPLACESEL). TVM_*/LVM_* need memory in the target
+  process (VirtualAllocEx); we do not do that.
+- **Clicking buttons:** `BM_CLICK` "might fail" when the dialog is not active (MS docs), which is the normal
+  case under the foreground lock. We post `WM_COMMAND(BN_CLICKED, id, hwnd)` to the parent, which is what a
+  click notifies; checkboxes get `BM_SETCHECK` + the same notification. Worked live on charmap and the Run dialog
+  while not in the foreground.
+- **Editable combobox:** `WM_SETTEXT` to the combo's child `Edit` (FindWindowEx) updates both and the Run
+  dialog accepted it (OK worked).
+- **Elevation:** regedit is `highestAvailable`; a non-elevated process cannot automate an elevated window (UIPI).
+  `launch(..., run_as_invoker=True)` sets `__COMPAT_LAYER=RunAsInvoker` for the child only.
+- **Headless agent check:** `claude -p "<task>" --mcp-config <file> --strict-mcp-config --allowedTools
+  "mcp__uibridge__*" --output-format json < /dev/null` (pass stdin explicitly or it waits 3 s).

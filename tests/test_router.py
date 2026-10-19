@@ -122,3 +122,101 @@ def test_minimized_window_is_called_out_in_the_header(router, fake, monkeypatch)
     fake.fixture["root"]["children"] = []
     header = router.snapshot(fake.target.app_id).view.text.splitlines()[0]
     assert header.startswith('app "Run" [win32] pid=4120 minimized (this app exposes no content while minimized')
+
+
+# -- composition: base adapter + enricher (win32-style) -----------------------------------------
+
+from uibridge.core.adapter import Declined  # noqa: E402
+from uibridge.core.model import ActionResult  # noqa: E402
+
+
+class FakeEnricher:
+    name = "win32"
+
+    def __init__(self, outcome):
+        self.outcome = outcome
+        self.calls = []
+
+    def attach(self, target):
+        pass
+
+    def enrich(self, tree):
+        for node in tree.walk():
+            if node.meta.native_role == "TitleBar" and not node.name:
+                node.name = "Run title bar"
+                node.meta.sources["name"] = self.name
+
+    def raw_dump(self):
+        return {"hwnds": 13}
+
+    def act(self, tree, ref, action, dry_run=False):
+        self.calls.append((ref, action.kind, dry_run))
+        if isinstance(self.outcome, Exception):
+            raise self.outcome
+        return self.outcome
+
+
+def composed(tracer, fake, tmp_path, outcome):
+    enricher = FakeEnricher(outcome)
+    r = Router(tracer, {"base_uia": lambda t: fake}, tmp_path / "refs", settle_s=0,
+               enrichers={"win32": lambda t: enricher})
+    r.attach(fake.target)
+    return r, enricher
+
+
+def combo_ref(router, fake):
+    return next(n.ref for n in router.snapshot(fake.target.app_id).tree.walk() if n.role == "combobox")
+
+
+def test_enricher_is_chosen_and_enriches_the_tree(tracer, fake, tmp_path):
+    router, _ = composed(tracer, fake, tmp_path, Declined("n/a"))
+    attached = router.apps[fake.target.app_id]
+    assert attached.detection.chosen == "win32" and "base_uia tree + win32 enrichment" in attached.detection.why
+    result = router.snapshot(fake.target.app_id)
+    title = next(n for n in result.tree.walk() if n.name == "Run title bar")
+    assert title.meta.sources == {"name": "win32"} and title.meta.adapter == "fake"
+    assert result.raw["win32"] == {"hwnds": 13}
+
+
+def test_native_message_runs_first(tracer, fake, tmp_path):
+    ok = ActionResult(ok=True, strategy="native_message", native_call="SendMessageTimeout(0x1, WM_SETTEXT, 'x')")
+    router, enricher = composed(tracer, fake, tmp_path, ok)
+    combo = combo_ref(router, fake)
+    result = router.act(fake.target.app_id, combo, Action(kind=ActionKind.SET_VALUE, value="x"))
+    assert result.strategy == "native_message" and enricher.calls == [(combo, ActionKind.SET_VALUE, False)]
+    native = [e for e in read_events(tracer) if e["kind"] == "action_native"][-1]["payload"]
+    assert native["fallbacks"] == [] and native["native_call"].startswith("SendMessageTimeout")
+
+
+def test_declined_falls_back_to_pattern_and_says_why(tracer, fake, tmp_path):
+    router, _ = composed(tracer, fake, tmp_path, Declined("no HWND for this element"))
+    combo = combo_ref(router, fake)
+    result = router.act(fake.target.app_id, combo, Action(kind=ActionKind.SET_VALUE, value="notepad"))
+    assert result.ok and result.strategy == "pattern"
+    assert result.native_call == "win32 declined: no HWND for this element; FakeAdapter.set_value(locator='/2/0', value='notepad')"
+    native = [e for e in read_events(tracer) if e["kind"] == "action_native"][-1]["payload"]
+    assert native["fallbacks"] == ["win32 declined: no HWND for this element"]
+
+
+def test_failing_enricher_falls_back_and_is_traced(tracer, fake, tmp_path):
+    router, _ = composed(tracer, fake, tmp_path, RuntimeError("SendMessageTimeout timed out"))
+    combo = combo_ref(router, fake)
+    result = router.act(fake.target.app_id, combo, Action(kind=ActionKind.SET_VALUE, value="v"))
+    assert result.ok and result.native_call.startswith("win32 failed: RuntimeError: SendMessageTimeout timed out; ")
+    assert any(e["kind"] == "error" and e["payload"]["context"].get("enricher") == "win32" for e in read_events(tracer))
+
+
+def test_failed_message_result_falls_back(tracer, fake, tmp_path):
+    bad = ActionResult(ok=False, strategy="native_message", native_call="PostMessage(BM_CLICK)", error="window gone")
+    router, _ = composed(tracer, fake, tmp_path, bad)
+    combo = combo_ref(router, fake)
+    result = router.act(fake.target.app_id, combo, Action(kind=ActionKind.SET_VALUE, value="v"))
+    assert result.strategy == "pattern" and "win32 failed: window gone (PostMessage(BM_CLICK))" in result.native_call
+
+
+def test_dry_run_passes_through_the_enricher(tracer, fake, tmp_path):
+    router, enricher = composed(tracer, fake, tmp_path, Declined("tree items need cross-process memory"))
+    combo = combo_ref(router, fake)
+    result = router.act(fake.target.app_id, combo, Action(kind=ActionKind.SET_VALUE, value="v"), dry_run=True)
+    assert enricher.calls[-1][2] is True
+    assert result.native_call.startswith("DRY-RUN: win32 declined: tree items need cross-process memory; FakeAdapter")

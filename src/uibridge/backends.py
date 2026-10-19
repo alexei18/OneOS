@@ -11,7 +11,7 @@ from collections.abc import Callable
 from functools import cache
 from pathlib import Path
 
-from uibridge.core.adapter import Adapter, WindowTarget
+from uibridge.core.adapter import Adapter, Enricher, WindowTarget
 
 FAKE_FIXTURES = ["win32_dialog", "tree_app", "long_list"]
 
@@ -46,3 +46,12 @@ def factories() -> dict[str, Callable[[WindowTarget], Adapter]]:
     from uibridge.adapters.base_uia import BaseUIAAdapter
 
     return {"base_uia": lambda target: BaseUIAAdapter()}
+
+
+def enrichers() -> dict[str, Callable[[WindowTarget], Enricher]]:
+    """Enrichers layered on top of base_uia for the framework they are named after."""
+    if fake_mode():
+        return {}
+    from uibridge.adapters.win32 import Win32Enricher
+
+    return {"win32": lambda target: Win32Enricher()}

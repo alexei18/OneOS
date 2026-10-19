@@ -57,6 +57,10 @@ async def test_agent_loop_over_stdio(tmp_path):
             await client.call_tool("snapshot", {"app_id": "fake-4120"}))
         assert "value: 'notepad'" in text(await client.call_tool("read", {"ref": combo}))
 
+        root = ref_of(view, '- dialog "Run"')
+        expanded = text(await client.call_tool("expand", {"ref": root, "depth": 1}))
+        assert '  - button "Cancel"' in expanded and "    - textbox" not in expanded  # depth = levels below the ref
+
         found = text(await client.call_tool("wait_for", {"app_id": "fake-4120", "role": "button", "name": "browse"}))
         assert found.startswith('- button "Browse..."')
 
@@ -68,7 +72,7 @@ async def test_agent_loop_over_stdio(tmp_path):
 
     events = [json.loads(line) for line in next((tmp_path / "traces").glob("*_mcp/events.jsonl")).open(encoding="utf-8")]
     kinds = [e["kind"] for e in events]
-    assert kinds.count("mcp_request") == kinds.count("mcp_response") == 9
+    assert kinds.count("mcp_request") == kinds.count("mcp_response") == 10
     assert "action_native" in kinds and "post_action_diff" in kinds
 
 

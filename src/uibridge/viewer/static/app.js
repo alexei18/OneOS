@@ -208,7 +208,9 @@ async function renderSnapshot(sid, ev) {
     const states = (n.states || []).filter((s) => s !== "enabled").join(" ");
     normPane.append(el("div", { class: "node", dataset: { ref: n.ref, loc: n.meta.locator } },
       "  ".repeat(depth), `${n.role}${n.name ? ` ${JSON.stringify(n.name)}` : ""} `, el("span", { class: "ref" }, `[${n.ref}]`),
-      states ? ` ${states}` : "", aiRefs.has(n.ref) ? "" : el("span", { class: "muted" }, "  ·not in AI view")));
+      states ? ` ${states}` : "",
+      Object.keys(n.meta.sources || {}).length ? el("span", { class: "src" }, `  ·${[...new Set(Object.values(n.meta.sources))].join("+")}: ${Object.keys(n.meta.sources).join(", ")}`) : "",
+      aiRefs.has(n.ref) ? "" : el("span", { class: "muted" }, "  ·not in AI view")));
     (n.children || []).forEach((c) => walkNorm(c, depth + 1));
   };
   if (g.normalized) walkNorm(g.normalized, 0); else normPane.append(el("div", { class: "muted" }, "no normalized tree for this snapshot"));

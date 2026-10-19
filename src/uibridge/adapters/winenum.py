@@ -15,9 +15,12 @@ import win32con
 import win32gui
 import win32process
 
+from uibridge.adapters._dpi import ensure_dpi_aware
 from uibridge.core.adapter import WindowTarget
 
 _DWMWA_CLOAKED = 14
+
+ensure_dpi_aware()
 
 
 def _is_cloaked(hwnd: int) -> bool:

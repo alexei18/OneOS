@@ -48,6 +48,10 @@ def _fmt_node(node: Node) -> str:
         f"automation_id: {m.automation_id!r}  class: {m.class_name!r}",
         f"adapter: {m.adapter}  framework: {m.framework}  locator: {m.locator}",
     ]
+    if m.hwnd:
+        lines.append(f"hwnd: {m.hwnd:#x}  control_id: {m.control_id}")
+    if m.sources:
+        lines.append("from other adapters: " + ", ".join(f"{f}={a}" for f, a in m.sources.items()))
     return "\n".join(lines)
 
 
@@ -61,7 +65,8 @@ class Bridge:
 
     def __init__(self, debug: bool, dry_run: bool) -> None:
         traces = backends.traces_dir()
-        self.router = Router(Tracer(traces, "mcp"), backends.factories(), traces / "_refs")
+        self.router = Router(Tracer(traces, "mcp"), backends.factories(), traces / "_refs",
+                             enrichers=backends.enrichers())
         self.debug = debug
         self.dry_run = dry_run
         self.lock = threading.Lock()
@@ -112,15 +117,18 @@ def build_server(debug: bool = False, dry_run: bool = False) -> MCPServer:
         return bridge.call("list_apps", {}, run)
 
     @tool(structured_output=False, description="Start a program (name on PATH or full path) and attach to the "
-          "window it opens. Returns the app_id and a depth-2 snapshot.")
-    def launch(path_or_name: str, args: list[str] | None = None, with_cdp: bool = False) -> str:
+          "window it opens. Returns the app_id and a depth-2 snapshot. run_as_invoker=true starts it without "
+          "elevation (for programs like regedit that would otherwise ask for administrator rights).")
+    def launch(path_or_name: str, args: list[str] | None = None, with_cdp: bool = False,
+               run_as_invoker: bool = False) -> str:
         def run() -> str:
             if with_cdp:
                 raise ValueError("with_cdp is not available yet (CDP adapter arrives in Phase 6); launch without it")
-            attached = router.launch(path_or_name, args or [], backends.windows)
+            attached = router.launch(path_or_name, args or [], backends.windows, run_as_invoker=run_as_invoker)
             app_id = attached.target.app_id
             return f"app_id: {app_id}\n" + router.snapshot(app_id, depth=2).view.text
-        return bridge.call("launch", {"path_or_name": path_or_name, "args": args, "with_cdp": with_cdp}, run)
+        return bridge.call("launch", {"path_or_name": path_or_name, "args": args, "with_cdp": with_cdp,
+                                      "run_as_invoker": run_as_invoker}, run)
 
     @tool(structured_output=False, description="Attach to a window by app_id (from list_apps). Returns its top "
           "two levels; use snapshot or expand to see more.")
@@ -141,10 +149,10 @@ def build_server(debug: bool = False, dry_run: bool = False) -> MCPServer:
                                         "include_offscreen": include_offscreen}, run)
 
     @tool(structured_output=False, description="Show the subtree under a ref, e.g. after `… N more (expand eX)`. "
-          "Cheaper than a deeper full snapshot.")
+          "depth = levels below the ref (1 = its direct children). Cheaper than a deeper full snapshot.")
     def expand(ref: str, depth: Annotated[int, Field(ge=1, le=12)] = 2) -> str:
-        def run() -> str:
-            return router.snapshot(router.app_of(ref), ref=ref, depth=depth).view.text
+        def run() -> str:  # render depth counts the ref's own line as a level
+            return router.snapshot(router.app_of(ref), ref=ref, depth=depth + 1).view.text
         return bridge.call("expand", {"ref": ref, "depth": depth}, run)
 
     @tool(structured_output=False, description="Full detail of one element: value, all states, supported "
@@ -156,7 +164,7 @@ def build_server(debug: bool = False, dry_run: bool = False) -> MCPServer:
 
     @tool(structured_output=False, description="Perform an action on a ref. value is the text for "
           "set_value/type_text and the keys for press_keys (e.g. 'Ctrl+S', 'Enter'). Returns ok/FAILED, the "
-          "strategy used (pattern / native_message / synthetic_input) and which refs changed.")
+          "strategy used (native_message / pattern / synthetic_input; fallbacks are listed) and which refs changed.")
     def act(ref: str, action: ActionKind, value: str | None = None) -> str:
         def run() -> str:
             app_id = router.app_of(ref)

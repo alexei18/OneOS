@@ -9,6 +9,7 @@ Refs are persisted per app in state_dir so separate processes (CLI calls) share 
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import time
@@ -16,9 +17,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from uibridge.core.adapter import FULL_DEPTH, Adapter, WindowTarget
-from uibridge.core.detector import Detection, detect
-from uibridge.core.model import Action, ActionResult, Node
+from uibridge.core.adapter import FULL_DEPTH, Adapter, Declined, Enricher, WindowTarget
+from uibridge.core.detector import FALLBACK, Detection, detect
+from uibridge.core.model import Action, ActionResult, Node, Ref
 from uibridge.core.refs import AssignStats, RefRegistry
 from uibridge.core.serializer import AIView, app_header, render
 from uibridge.core.tracer import Tracer
@@ -31,6 +32,7 @@ class Attached:
     target: WindowTarget
     detection: Detection
     adapter: Adapter
+    enricher: Enricher | None = None  # e.g. win32 facts + native messages on top of the base_uia tree
 
 
 @dataclass
@@ -42,9 +44,11 @@ class SnapshotResult:
 
 class Router:
     def __init__(self, tracer: Tracer, adapters: dict[str, Callable[[WindowTarget], Adapter]], state_dir: Path | str,
-                 settle_s: float = SETTLE_S) -> None:
+                 settle_s: float = SETTLE_S,
+                 enrichers: dict[str, Callable[[WindowTarget], Enricher]] | None = None) -> None:
         self.tracer = tracer
         self.adapters = adapters
+        self.enrichers = enrichers or {}
         self.state_dir = Path(state_dir)
         self.settle_s = settle_s
         self.registry = RefRegistry(tracer)
@@ -52,7 +56,9 @@ class Router:
         self.last_diff: AssignStats | None = None
 
     def detect(self, target: WindowTarget) -> Detection:
-        detection = detect(target, set(self.adapters))
+        detection = detect(target, set(self.adapters) | set(self.enrichers))
+        if detection.chosen in self.enrichers:
+            detection.why += f" (base_uia tree + {detection.chosen} enrichment)"
         self.tracer.emit(
             "detect",
             {"target": target.model_dump(), **detection.model_dump()},
@@ -62,14 +68,18 @@ class Router:
 
     def attach(self, target: WindowTarget) -> Attached:
         detection = self.detect(target)
-        adapter = self.adapters[detection.chosen](target)
+        composed = detection.chosen in self.enrichers
+        adapter = self.adapters[FALLBACK if composed else detection.chosen](target)
+        enricher = self.enrichers[detection.chosen](target) if composed else None
         try:
             adapter.attach(target)
+            if enricher:
+                enricher.attach(target)
         except Exception as e:
             self.tracer.error(e, {"op": "attach", "adapter": detection.chosen}, app_id=target.app_id)
             raise
         self.registry.load(self._state_path(target.app_id), target.app_id, target.pid)
-        attached = Attached(target, detection, adapter)
+        attached = Attached(target, detection, adapter, enricher)
         self.apps[target.app_id] = attached
         return attached
 
@@ -79,6 +89,8 @@ class Router:
         try:
             root = self.registry.resolve(ref, app.adapter)[0] if ref else None
             raw = app.adapter.raw_dump(root, FULL_DEPTH)
+            if app.enricher:
+                raw = {**raw, app.enricher.name: app.enricher.raw_dump()}
             self.tracer.emit("snapshot_raw", {"root_ref": ref, "adapter": app.adapter.name, "raw": raw},
                              app_id=app_id)
             tree, _ = self._snapshot_tree(app, root_ref=ref)
@@ -141,19 +153,21 @@ class Router:
         return render(node, self.tracer, app_id=app_id, depth=depth)
 
     def launch(self, path_or_name: str, args: list[str], windows: Callable[[], list[WindowTarget]],
-               timeout_s: float = 15.0) -> Attached:
+               timeout_s: float = 15.0, run_as_invoker: bool = False) -> Attached:
         """Start a program and attach to the window it opens. UWP launchers (calc.exe) hand off to
         another process, so a single new window from any process is accepted."""
         exe = shutil.which(path_or_name) or path_or_name
         before = {w.app_id for w in windows()}
         cmd = [exe, *args]
-        self.tracer.emit("action_request", {"launch": path_or_name, "args": args})
+        env = {**os.environ, "__COMPAT_LAYER": "RunAsInvoker"} if run_as_invoker else None
+        self.tracer.emit("action_request", {"launch": path_or_name, "args": args, "run_as_invoker": run_as_invoker})
         try:
-            proc = subprocess.Popen(cmd)
+            proc = subprocess.Popen(cmd, env=env)
         except OSError as e:
             self.tracer.error(e, {"op": "launch", "cmd": cmd})
             raise FileNotFoundError(f"cannot start {path_or_name!r}: {e}; pass a full path") from e
-        self.tracer.emit("action_native", {"strategy": "process", "native_call": f"subprocess.Popen({cmd!r})",
+        env_note = ", env __COMPAT_LAYER=RunAsInvoker" if run_as_invoker else ""
+        self.tracer.emit("action_native", {"strategy": "process", "native_call": f"subprocess.Popen({cmd!r}{env_note})",
                                            "pid": proc.pid})
         deadline = time.monotonic() + timeout_s
         new: list[WindowTarget] = []
@@ -184,12 +198,12 @@ class Router:
         self.tracer.emit("action_request", {"ref": ref, "action": action.model_dump(mode="json"),
                                             "dry_run": dry_run}, app_id=app_id)
         try:
-            self._snapshot_tree(app)  # fresh baseline: refs current, diff measures only this action
+            pre_tree, _ = self._snapshot_tree(app)  # fresh baseline: refs current, diff measures only this action
             resolved, _ = self.registry.resolve(ref, app.adapter)
-            result = app.adapter.act(resolved, action, dry_run=dry_run)
+            result, fallbacks = self._act_composed(app, pre_tree, resolved, action, dry_run)
             self.tracer.emit("action_native", {"ref": ref, "locator": resolved.locator, "strategy": result.strategy,
-                                               "native_call": result.native_call, "dry_run": dry_run},
-                             app_id=app_id)
+                                               "native_call": result.native_call, "dry_run": dry_run,
+                                               "fallbacks": fallbacks}, app_id=app_id)
             self.last_diff = None
             if result.ok and not dry_run:
                 time.sleep(self.settle_s)
@@ -209,9 +223,39 @@ class Router:
 
     # -- internals --------------------------------------------------------------------------
 
+    def _act_composed(self, app: Attached, pre_tree: Node, ref: Ref, action: Action,
+                      dry_run: bool) -> tuple[ActionResult, list[str]]:
+        """Enricher first (native messages, e.g. BM_CLICK), then the base adapter (pattern, then synthetic).
+        Every step that did not do the action is recorded with its reason."""
+        fallbacks: list[str] = []
+        if app.enricher is not None:
+            name = app.enricher.name
+            try:
+                outcome = app.enricher.act(pre_tree, ref.id, action, dry_run=dry_run)
+            except Exception as e:
+                self.tracer.error(e, {"op": "act", "enricher": name, "ref": ref.id}, app_id=app.target.app_id)
+                fallbacks.append(f"{name} failed: {type(e).__name__}: {e}")
+            else:
+                if isinstance(outcome, Declined):
+                    fallbacks.append(f"{name} declined: {outcome.reason}")
+                elif outcome.ok:
+                    return outcome, fallbacks
+                else:
+                    fallbacks.append(f"{name} failed: {outcome.error} ({outcome.native_call})")
+        result = app.adapter.act(ref, action, dry_run=dry_run)
+        if fallbacks:
+            prefix = "; ".join(fallbacks)
+            if result.native_call.startswith("DRY-RUN: "):
+                result.native_call = f"DRY-RUN: {prefix}; {result.native_call[9:]}"
+            else:
+                result.native_call = f"{prefix}; {result.native_call}"
+        return result, fallbacks
+
     def _snapshot_tree(self, app: Attached, root_ref: str | None = None) -> tuple[Node, AssignStats]:
         root = self.registry.get(root_ref) if root_ref else None
         tree = app.adapter.snapshot(root, FULL_DEPTH)
+        if app.enricher is not None:
+            app.enricher.enrich(tree)
         for node in tree.walk():
             node.meta.framework = app.detection.framework
         stats = self.registry.assign(tree, app.target.app_id, root_ref=root_ref)

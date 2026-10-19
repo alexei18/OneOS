@@ -17,6 +17,7 @@ import win32con
 import win32gui
 import xa11y
 
+from uibridge.adapters._dpi import ensure_dpi_aware
 from uibridge.adapters.uia_roles import native_role_name, uia_actions, uia_role, uia_states
 from uibridge.core.adapter import LocatorNotFound, WindowTarget
 from uibridge.core.model import Action, ActionKind, ActionResult, Node, NodeMeta, Rect, Ref, Strategy
@@ -42,6 +43,8 @@ _PATTERNS: dict[ActionKind, tuple[str, str, bool]] = {
 }
 _MOUSE = {A.CLICK: ("left", 1), A.DOUBLE_CLICK: ("left", 2), A.RIGHT_CLICK: ("right", 1)}
 _MODIFIERS = {"ctrl": "Ctrl", "control": "Ctrl", "shift": "Shift", "alt": "Alt", "win": "Meta", "meta": "Meta"}
+
+ensure_dpi_aware()
 
 
 class SyntheticInputBlocked(Exception):
@@ -79,6 +82,16 @@ def parse_keys(keys: str) -> list[tuple[str, list[str]]]:
         *mods, key = combo.split("+")
         steps.append((key, [_MODIFIERS.get(m.lower(), m) for m in mods]))
     return steps
+
+
+def hwnd_of(stable_id: str | None) -> int | None:
+    """xa11y reports "hwnd:0x1b068e" as stable_id for every HWND-backed element."""
+    if stable_id and stable_id.startswith("hwnd:"):
+        try:
+            return int(stable_id[5:], 16)
+        except ValueError:
+            return None
+    return None
 
 
 def _state_hash(props: dict[str, Any]) -> str:
@@ -317,6 +330,7 @@ class BaseUIAAdapter:
                 class_name=raw.get("class_name") or None,
                 process=self.target.process_name if self.target else None,
                 locator=loc,
+                hwnd=hwnd_of(props["stable_id"]),
             ),
         )
 

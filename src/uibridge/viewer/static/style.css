@@ -59,6 +59,7 @@ tr.payload td { background: var(--bg); }
 .node { white-space: pre; cursor: pointer; padding: 0 4px; border-radius: 3px; }
 .node:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .ref { color: var(--accent); cursor: pointer; }
+.src { color: var(--warn); }
 .hl, .ref.hl { background: var(--hl); color: var(--hl-text); }
 .detail { margin-top: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; }
 .detail .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

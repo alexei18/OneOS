@@ -132,6 +132,9 @@ class NodeMeta(BaseModel):
     process: str | None = None
     locator: str | None = None
     fingerprint: Fingerprint | None = None
+    hwnd: int | None = None  # native window handle, for HWND-backed elements
+    control_id: int | None = None  # Win32 dialog control id (GetDlgCtrlID)
+    sources: dict[str, str] = Field(default_factory=dict)  # field -> adapter, only where not meta.adapter
 
 
 class Node(BaseModel):

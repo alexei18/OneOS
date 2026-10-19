@@ -119,6 +119,11 @@ def test_long_value_truncated_and_control_chars_escaped(tracer):
     assert v.stats.text_truncated == 1
 
 
+def test_value_equal_to_name_is_not_repeated(tracer):
+    item = Node(ref="e3", role=Role.TREEITEM, name="Computer", value="Computer")
+    assert view(Node(role=Role.TREE, children=[item]), tracer).text.splitlines()[1] == '  - treeitem "Computer" [e3]'
+
+
 def test_icon_glyph_text_is_dropped(tracer):
     button = Node(ref="e2", role=Role.BUTTON, name="Multiply by", children=[Node(role=Role.TEXT, name="")])
     loose = Node(role=Role.TEXT, name="  ")

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Protocol
 
 from pydantic import BaseModel, Field
@@ -48,3 +49,24 @@ class Adapter(Protocol):
     def raw_dump(self, root: Ref | None, depth: int) -> dict: ...  # native tree as-is, for debug
 
     def detach(self) -> None: ...
+
+
+@dataclass
+class Declined:
+    """An enricher has no safe native way to perform this action; the base adapter should."""
+
+    reason: str
+
+
+class Enricher(Protocol):
+    """Adds framework-specific facts and actions on top of a base adapter's tree (e.g. win32 on base_uia)."""
+
+    name: str
+
+    def attach(self, target: WindowTarget) -> None: ...
+
+    def enrich(self, tree: Node) -> None: ...  # mutate in place; record changed fields in meta.sources
+
+    def raw_dump(self) -> dict: ...
+
+    def act(self, tree: Node, ref: str, action: Action, dry_run: bool = False) -> ActionResult | Declined: ...
